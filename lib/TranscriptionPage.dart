@@ -39,7 +39,7 @@ class _TranscriptionPageState extends State<TranscriptionPage> {
         _isProcessing = true;
       });
 
-      // محاكاة معالجة الملف وتفريغه
+     
       Future.delayed(const Duration(seconds: 3), () {
         setState(() {
           _isProcessing = false;
