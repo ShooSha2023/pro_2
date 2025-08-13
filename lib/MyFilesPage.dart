@@ -188,7 +188,7 @@ class _MyFilesPageState extends State<MyFilesPage> {
   }
 }
 
-// هذا لمودل مشان نربط الباك لنرجع نحطو بملف تاني
+
 class FileInfo {
   final String id;
   final String name;
