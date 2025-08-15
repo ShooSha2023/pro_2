@@ -31,7 +31,7 @@ class _HomePageState extends State<HomePage> {
   int _selectedIndex = 2;
 
   final List<Widget> _pages = const [
-    // SearchPage(),
+   
     MyFilesPage(),
     SummaryPage(),
     TranscriptionPage(),
