@@ -5,6 +5,11 @@ import 'dart:io';
 
 import 'package:pro_2/widgets/buildTextfield.dart';
 import 'package:pro_2/widgets/locationDropdown.dart';
+import 'package:pro_2/widgets/top_notification.dart';
+import 'package:pro_2/widgets/ActionButton.dart';
+import 'package:pro_2/localization/app_localizations.dart';
+import 'package:provider/provider.dart';
+import 'package:pro_2/providers/locale_provider.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -15,14 +20,14 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   File? _profileImage;
-  String? _firstName = 'Shaza';
-  String? _lastName = 'Safi';
-  final String _phoneNumber = '0999999999';
-  String? _government = 'Damascus';
-  String? _locationDescription = 'Al_Tadamon';
+  String? _firstName = '';
+  String? _lastName = '';
+  String? _email = '';
+  String? _password = '';
+  String? _mediaRole = 'مراسل';
   final bool _isLoading = false;
 
-  final Color primaryColor = const Color(0xFF8185E2);
+  bool _isPasswordVisible = false;
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
@@ -37,26 +42,22 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    int _currentIndex = 1;
+    final Color primaryColor = Theme.of(context).colorScheme.primary;
+    final localeProvider = Provider.of<LocaleProvider>(context);
+    final lang = localeProvider.locale.languageCode;
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text(
-          'My Profile',
-          style: TextStyle(
-            fontSize: 24,
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+        title: Text(
+          AppLocalizations.getText('profile', lang),
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         backgroundColor: primaryColor,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          onPressed: () => Navigator.pop(context),
         ),
       ),
       body: _isLoading
@@ -71,10 +72,10 @@ class _ProfilePageState extends State<ProfilePage> {
                       alignment: Alignment.bottomRight,
                       children: [
                         CircleAvatar(
-                          radius: 78,
+                          radius: 88,
                           backgroundColor: primaryColor.withOpacity(0.4),
                           child: CircleAvatar(
-                            radius: 75,
+                            radius: 85,
                             backgroundImage: _profileImage != null
                                 ? FileImage(_profileImage!)
                                 : const AssetImage('assets/logo.png')
@@ -92,82 +93,149 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 40),
+
+                    // الاسم الأول
                     buildTextField(
-                      label: 'First Name',
-                      hintText: 'Enter your first name',
+                      label: AppLocalizations.getText(
+                        'profile_first_name',
+                        lang,
+                      ),
+                      hintText: AppLocalizations.getText(
+                        'profile_first_name',
+                        lang,
+                      ),
                       icon: Icons.person_3_rounded,
                       initialValue: _firstName ?? '',
                       onChanged: (value) => _firstName = value,
+                      context: context,
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 30),
+
+                    // الاسم الثاني
                     buildTextField(
-                      label: 'Last Name',
-                      hintText: 'Enter your last name',
+                      label: AppLocalizations.getText(
+                        'profile_last_name',
+                        lang,
+                      ),
+                      hintText: AppLocalizations.getText(
+                        'profile_last_name',
+                        lang,
+                      ),
                       icon: Icons.person_3_rounded,
                       initialValue: _lastName ?? '',
                       onChanged: (value) => _lastName = value,
+                      context: context,
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 30),
+
+                    // البريد الإلكتروني
                     buildTextField(
-                      label: 'Phone Number',
-                      hintText: 'Your phone number',
-                      icon: Icons.phone,
-                      initialValue: _phoneNumber ?? '',
-                      enabled: false,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      onChanged: null,
+                      label: AppLocalizations.getText('profile_email', lang),
+                      hintText: AppLocalizations.getText('profile_email', lang),
+                      icon: Icons.email,
+                      initialValue: _email ?? '',
+                      onChanged: (value) => _email = value,
+                      context: context,
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 30),
+
+                    // كلمة المرور
+                    TextFormField(
+                      initialValue: _password ?? '',
+                      obscureText: !_isPasswordVisible,
+                      onChanged: (value) => _password = value,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                      decoration: InputDecoration(
+                        labelText: AppLocalizations.getText(
+                          'profile_password',
+                          lang,
+                        ),
+                        hintText: AppLocalizations.getText(
+                          'profile_password',
+                          lang,
+                        ),
+                        labelStyle: TextStyle(
+                          color: primaryColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        prefixIcon: Icon(Icons.lock, color: primaryColor),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _isPasswordVisible
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                            color: primaryColor,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _isPasswordVisible = !_isPasswordVisible;
+                            });
+                          },
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(15),
+                          borderSide: BorderSide(color: primaryColor),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(15),
+                          borderSide: BorderSide(
+                            color: primaryColor.withOpacity(0.5),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(15),
+                          borderSide: BorderSide(color: primaryColor, width: 2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+
+                    // Dropdown خاص بالمجال الإعلامي
                     LocationDropdown(
                       locations: [
-                        'Damascus',
-                        'Homs',
-                        'Hama',
-                        'Tartus',
-                        'Latakia',
-                        'Aleppo',
-                        'Al_Sweida',
-                        'Daraa',
-                        'Idlib',
-                        'Qunaitera',
-                        'Al_Hasaka',
-                        'Al_Raqqa',
-                        'Daer_AlZor',
+                        AppLocalizations.getText('profile_role_reporter', lang),
+                        AppLocalizations.getText('profile_role_editor', lang),
+                        AppLocalizations.getText(
+                          'profile_role_presenter',
+                          lang,
+                        ),
+                        AppLocalizations.getText(
+                          'profile_role_commentator',
+                          lang,
+                        ),
                       ],
-                      defaultValue: _government,
-                      onLocationChanged: (selectedLocation) {
+                      defaultValue: AppLocalizations.getText(
+                        'profile_role_reporter',
+                        lang,
+                      ),
+                      onLocationChanged: (selectedRole) {
                         setState(() {
-                          _government = selectedLocation;
+                          _mediaRole = selectedRole;
                         });
                       },
                     ),
-                    const SizedBox(height: 18),
-                    buildTextField(
-                      label: 'Location Description',
-                      hintText: 'Enter a description for your location',
-                      icon: Icons.description,
-                      initialValue: _locationDescription ?? '',
-                      onChanged: (value) => _locationDescription = value,
-                    ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 40),
+
+                    // زر الحفظ باستخدام ActionButton
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 25),
-                      child: ElevatedButton(
+                      padding: const EdgeInsets.symmetric(horizontal: 0),
+                      child: ActionButton(
+                        color: primaryColor,
+                        icon: Icons.save,
+                        label: AppLocalizations.getText('save', lang),
                         onPressed: () {
-                          showNotification('Profile data saved (Mock)');
+                          TopNotification.show(
+                            context,
+                            AppLocalizations.getText(
+                              'profile_save_success',
+                              lang,
+                            ),
+                            type: NotificationType.success,
+                          );
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryColor,
-                          minimumSize: const Size(double.infinity, 50),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                        ),
-                        child: const Text(
-                          'Save',
-                          style: TextStyle(fontSize: 22, color: Colors.white),
-                        ),
+                        height: 55,
+                        fontSize: 20,
                       ),
                     ),
                   ],
@@ -175,36 +243,5 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
     );
-  }
-
-  void showNotification(String message) {
-    final overlay = Overlay.of(context);
-    final overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        top: 60,
-        left: MediaQuery.of(context).size.width * 0.1,
-        right: MediaQuery.of(context).size.width * 0.1,
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-            decoration: BoxDecoration(
-              color: primaryColor.withOpacity(0.9),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              message,
-              style: const TextStyle(color: Colors.white, fontSize: 16),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
-      ),
-    );
-
-    overlay.insert(overlayEntry);
-    Future.delayed(const Duration(seconds: 3), () {
-      overlayEntry.remove();
-    });
   }
 }

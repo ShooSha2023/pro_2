@@ -12,8 +12,6 @@ class _SearchPageState extends State<SearchPage> {
   List<String> _results = [];
   bool _isSearching = false;
 
-  final Color primaryColor = Color(0xFF8185E2);
-
   void _performSearch() {
     final query = _searchController.text.trim();
     if (query.isEmpty) return;
@@ -25,8 +23,10 @@ class _SearchPageState extends State<SearchPage> {
 
     Future.delayed(const Duration(seconds: 1), () {
       setState(() {
-        _results =
-            List.generate(5, (index) => 'نتيجة ${index + 1} للبحث: "$query"');
+        _results = List.generate(
+          5,
+          (index) => 'نتيجة ${index + 1} للبحث: "$query"',
+        );
         _isSearching = false;
       });
     });
@@ -34,10 +34,12 @@ class _SearchPageState extends State<SearchPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('🔍 البحث'),
-        backgroundColor: primaryColor,
+        backgroundColor: theme.colorScheme.primary,
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),
@@ -48,37 +50,47 @@ class _SearchPageState extends State<SearchPage> {
               onSubmitted: (_) => _performSearch(),
               decoration: InputDecoration(
                 hintText: 'أدخل كلمة للبحث...',
-                prefixIcon: const Icon(Icons.search),
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: theme.colorScheme.onSurface,
+                ),
                 suffixIcon: IconButton(
-                  icon: const Icon(Icons.send),
+                  icon: Icon(Icons.send, color: theme.colorScheme.onSurface),
                   onPressed: _performSearch,
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(15),
                 ),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: theme.cardColor,
               ),
+              style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: 20),
             _isSearching
                 ? const CircularProgressIndicator()
                 : Expanded(
                     child: _results.isEmpty
-                        ? const Center(
+                        ? Center(
                             child: Text(
                               'لا توجد نتائج بعد.',
-                              style: TextStyle(fontSize: 16),
+                              style: theme.textTheme.bodyMedium,
                             ),
                           )
                         : ListView.builder(
                             itemCount: _results.length,
                             itemBuilder: (context, index) {
                               return Card(
-                                color: Colors.white,
+                                color: theme.cardColor,
                                 child: ListTile(
-                                  leading: const Icon(Icons.description),
-                                  title: Text(_results[index]),
+                                  leading: Icon(
+                                    Icons.description,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                  title: Text(
+                                    _results[index],
+                                    style: theme.textTheme.bodyMedium,
+                                  ),
                                 ),
                               );
                             },

@@ -1,45 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:pro_2/ProfilePage.dart';
+import 'package:pro_2/providers/locale_provider.dart';
+import 'package:pro_2/providers/theme_provider.dart';
+import 'package:pro_2/localization/app_localizations.dart';
 
-class SettingsPage extends StatefulWidget {
+class SettingsPage extends StatelessWidget {
   const SettingsPage({Key? key}) : super(key: key);
 
-  @override
-  State<SettingsPage> createState() => _SettingsPageState();
-}
-
-class _SettingsPageState extends State<SettingsPage> {
-  final Color primaryColor = const Color(0xFF8185E2);
-  bool _darkMode = false;
-  String _language = 'العربية';
-
-  void _toggleDarkMode(bool value) {
-    setState(() {
-      _darkMode = value;
-    });
-  }
-
-  void _changeLanguage() {
-    setState(() {
-      _language = _language == 'العربية' ? 'English' : 'العربية';
-    });
-  }
-
-  void _logout() {
+  void _logout(BuildContext context, String langCode) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('تأكيد الخروج'),
-        content: const Text('هل أنت متأكد أنك تريد تسجيل الخروج؟'),
+        title: Text(AppLocalizations.getText('logout', langCode)),
+        content: Text(AppLocalizations.getText('logout_confirm', langCode)),
         actions: [
           TextButton(
-            child: const Text('إلغاء'),
+            child: Text(AppLocalizations.getText('cancel', langCode)),
             onPressed: () => Navigator.pop(context),
           ),
           TextButton(
-            child: const Text('خروج'),
+            child: Text(AppLocalizations.getText('logout', langCode)),
             onPressed: () {
               Navigator.pop(context);
+              // TODO: Add navigation to LoginPage here
             },
           ),
         ],
@@ -47,52 +31,79 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  void _goToProfile() {
+  void _goToProfile(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => ProfilePage()),
+      MaterialPageRoute(builder: (context) => const ProfilePage()),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final localeProvider = Provider.of<LocaleProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final theme = Theme.of(context);
+
+    final langCode = localeProvider.locale.languageCode;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('⚙️ الإعدادات'),
-        backgroundColor: primaryColor,
+        title: Text(AppLocalizations.getText('settings', langCode)),
+        backgroundColor: theme.colorScheme.primary,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           ListTile(
-            leading: const Icon(Icons.person),
-            title: const Text('الملف الشخصي'),
-            trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: _goToProfile,
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.language),
-            title: const Text('اللغة'),
-            subtitle: Text(_language),
-            trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: _changeLanguage,
-          ),
-          const Divider(),
-          SwitchListTile(
-            secondary: const Icon(Icons.dark_mode),
-            title: const Text('الوضع الليلي'),
-            value: _darkMode,
-            onChanged: _toggleDarkMode,
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.logout, color: Colors.red),
-            title: const Text(
-              'تسجيل الخروج',
-              style: TextStyle(color: Colors.red),
+            leading: Icon(Icons.person, color: theme.colorScheme.onPrimary),
+            title: Text(
+              AppLocalizations.getText('profile', langCode),
+              style: theme.textTheme.bodyMedium,
             ),
-            onTap: _logout,
+            trailing: Icon(
+              Icons.arrow_forward_ios,
+              color: theme.colorScheme.onPrimary,
+            ),
+            onTap: () => _goToProfile(context),
+          ),
+          Divider(color: theme.dividerColor),
+          ListTile(
+            leading: Icon(Icons.language, color: theme.colorScheme.onPrimary),
+            title: Text(
+              AppLocalizations.getText('language', langCode),
+              style: theme.textTheme.bodyMedium,
+            ),
+            subtitle: Text(langCode == 'ar' ? 'العربية' : 'English'),
+            trailing: Icon(
+              Icons.arrow_forward_ios,
+              color: theme.colorScheme.onPrimary,
+            ),
+            onTap: () {
+              final isArabic = langCode == 'ar';
+              localeProvider.setLocale(Locale(isArabic ? 'en' : 'ar'));
+            },
+          ),
+          Divider(color: theme.dividerColor),
+          SwitchListTile(
+            secondary: Icon(
+              Icons.dark_mode,
+              color: theme.colorScheme.onPrimary,
+            ),
+            title: Text(
+              AppLocalizations.getText('dark_mode', langCode),
+              style: theme.textTheme.bodyMedium,
+            ),
+            value: themeProvider.isDarkMode,
+            onChanged: (value) => themeProvider.toggleTheme(),
+          ),
+          Divider(color: theme.dividerColor),
+          ListTile(
+            leading: Icon(Icons.logout, color: Colors.red),
+            title: Text(
+              AppLocalizations.getText('logout', langCode),
+              style: theme.textTheme.bodyMedium?.copyWith(color: Colors.red),
+            ),
+            onTap: () => _logout(context, langCode),
           ),
         ],
       ),

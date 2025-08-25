@@ -1,9 +1,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- صلاحيات قراءة وكتابة الملفات -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+
+    <!-- صلاحية تسجيل الصوت -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <application
         android:label="pro_2"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
+        android:requestLegacyExternalStorage="true"
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"

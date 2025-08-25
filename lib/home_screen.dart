@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pro_2/MyFilesPage.dart';
+import 'package:pro_2/localization/app_theme.dart';
 import 'TranscriptionPage.dart';
 import 'SummaryPage.dart';
 import 'SearchPage.dart';
@@ -14,9 +15,12 @@ class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: HomePage(),
+      theme: AppThemes.lightTheme,
+      darkTheme: AppThemes.darkTheme,
+      themeMode: ThemeMode.system,
+      home: const HomePage(),
     );
   }
 }
@@ -30,7 +34,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 2;
 
-  final List<Widget> _pages = const [
+  // لا const هنا
+  final List<Widget> _pages = [
     // SearchPage(),
     MyFilesPage(),
     SummaryPage(),
@@ -47,12 +52,11 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  final Color primaryColor = const Color(0xFF8185E2);
-
   @override
   Widget build(BuildContext context) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
         child: _pages[_selectedIndex],
@@ -83,8 +87,8 @@ class _HomePageState extends State<HomePage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildTabIcon(Icons.search, 0),
-                _buildTabIcon(Icons.description, 1),
+                _buildTabIcon(Icons.description_rounded, 0),
+                _buildTabIcon(Icons.summarize_outlined, 1),
                 const SizedBox(width: 50),
                 _buildTabIcon(Icons.people, 3),
                 _buildTabIcon(Icons.settings, 4),
@@ -98,12 +102,14 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildTabIcon(IconData icon, int index) {
     bool isSelected = _selectedIndex == index;
+    final color = Theme.of(context).colorScheme.onSecondary;
+
     return IconButton(
       onPressed: () => _onItemTapped(index),
       icon: Icon(
         icon,
         size: isSelected ? 28 : 24,
-        color: Colors.white.withOpacity(isSelected ? 1.0 : 0.5),
+        color: color.withOpacity(isSelected ? 1.0 : 0.5),
       ),
     );
   }

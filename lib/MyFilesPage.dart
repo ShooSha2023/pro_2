@@ -3,8 +3,13 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:pro_2/FileEditorPage.dart';
-
 import 'package:pro_2/SearchPage.dart';
+import 'package:pro_2/favourite.dart';
+import 'package:pro_2/widgets/ActionButton.dart';
+import 'package:pro_2/providers/favorites_provider.dart';
+import 'package:pro_2/localization/app_localizations.dart';
+import 'package:provider/provider.dart';
+import 'package:pro_2/providers/locale_provider.dart';
 
 class MyFilesPage extends StatefulWidget {
   const MyFilesPage({Key? key}) : super(key: key);
@@ -14,7 +19,6 @@ class MyFilesPage extends StatefulWidget {
 }
 
 class _MyFilesPageState extends State<MyFilesPage> {
-  final Color primaryColor = const Color(0xFF8185E2);
   bool _isLoading = true;
   List<FileInfo> _files = [];
 
@@ -25,7 +29,7 @@ class _MyFilesPageState extends State<MyFilesPage> {
   }
 
   Future<void> _fetchFilesFromServer() async {
-    await Future.delayed(Duration(seconds: 2));
+    await Future.delayed(const Duration(seconds: 2));
     setState(() {
       _files = [
         FileInfo(
@@ -45,125 +49,191 @@ class _MyFilesPageState extends State<MyFilesPage> {
     });
   }
 
-  Future<void> _downloadFile(FileInfo file) async {
+  Future<void> _downloadFile(FileInfo file, String lang, String format) async {
     try {
       final response = await http.get(Uri.parse(file.url));
       if (response.statusCode == 200) {
         final directory = await getExternalStorageDirectory();
-        final filePath = '${directory?.path}/${file.name}';
+        final extension = format.toLowerCase();
+        final filePath =
+            '${directory?.path}/${file.name.split(".")[0]}.$extension';
         final localFile = File(filePath);
         await localFile.writeAsBytes(response.bodyBytes);
 
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('تم حفظ الملف في: $filePath')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${AppLocalizations.getText('my_files_saved', lang)}: $filePath',
+            ),
+          ),
+        );
       } else {
-        throw Exception('فشل تحميل الملف من السيرفر');
+        throw Exception(
+          AppLocalizations.getText('my_files_failed_download', lang),
+        );
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('حدث خطأ أثناء تحميل الملف: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${AppLocalizations.getText('my_files_error', lang)}: $e',
+          ),
+        ),
+      );
     }
   }
 
-  void _createNewFile() {
+  void _createNewFile(String lang) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) =>
-            const FileEditorPage(fileName: 'ملف جديد.txt', fileUrl: ''),
+        builder: (context) => FileEditorPage(
+          fileName: AppLocalizations.getText('my_files_new_file', lang),
+          fileUrl: '',
+        ),
       ),
+    );
+  }
+
+  void _showExportMenu(FileInfo file, String lang) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.article),
+              title: const Text('Word'),
+              onTap: () {
+                Navigator.pop(context);
+                _downloadFile(file, lang, 'docx');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.text_snippet),
+              title: const Text('Text'),
+              onTap: () {
+                Navigator.pop(context);
+                _downloadFile(file, lang, 'txt');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf),
+              title: const Text('PDF'),
+              onTap: () {
+                Navigator.pop(context);
+                _downloadFile(file, lang, 'pdf');
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('ملفاتي'),
-        backgroundColor: primaryColor,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => SearchPage()),
-                    );
-                  },
-                  icon: const Icon(Icons.search),
-                  label: const Text('بحث'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('تم تنفيذ التصدير')),
-                    );
-                  },
-                  icon: const Icon(Icons.upload_file),
-                  label: const Text('تصدير'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                ),
-                ElevatedButton.icon(
-                  onPressed: _createNewFile,
-                  icon: const Icon(Icons.note_add),
-                  label: const Text('إنشاء'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                ),
-              ],
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final localeProvider = Provider.of<LocaleProvider>(context);
+    final lang = localeProvider.locale.languageCode;
+
+    return ChangeNotifierProvider(
+      create: (_) => FavoritesProvider(),
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(AppLocalizations.getText('my_files', lang)),
+          backgroundColor: primaryColor,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.search),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SearchPage()),
+                );
+              },
+              tooltip: AppLocalizations.getText('my_files_search', lang),
             ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: _isLoading
+            IconButton(
+              icon: const Icon(Icons.favorite),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => FavoritesPage(allFiles: _files),
+                  ),
+                );
+              },
+              tooltip: AppLocalizations.getText('favorites', lang),
+            ),
+            IconButton(
+              icon: const Icon(Icons.note_add),
+              onPressed: () => _createNewFile(lang),
+              tooltip: AppLocalizations.getText('my_files_create', lang),
+            ),
+          ],
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Consumer<FavoritesProvider>(
+            builder: (context, favorites, _) {
+              return _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : _files.isEmpty
-                  ? const Center(child: Text('لا توجد ملفات.'))
+                  ? Center(
+                      child: Text(
+                        AppLocalizations.getText('my_files_empty', lang),
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    )
                   : ListView.builder(
                       itemCount: _files.length,
                       itemBuilder: (context, index) {
                         final file = _files[index];
+                        final isFavorite = favorites.isFavorite(file.id);
+
                         return Card(
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
                           ),
                           elevation: 4,
                           margin: const EdgeInsets.symmetric(vertical: 8),
+                          color: Theme.of(context).cardColor,
                           child: ListTile(
                             title: Text(
                               file.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold),
                             ),
                             subtitle: Text(
-                              'تاريخ: ${file.date.toLocal().toString().split(" ")[0]}',
+                              '${AppLocalizations.getText('my_files_date', lang)}: ${file.date.toLocal().toString().split(" ")[0]}',
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: Colors.grey),
                             ),
-                            trailing: IconButton(
-                              icon: Icon(Icons.download, color: primaryColor),
-                              onPressed: () => _downloadFile(file),
+                            trailing: SizedBox(
+                              width: 100,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.download),
+                                    color: primaryColor,
+                                    onPressed: () =>
+                                        _showExportMenu(file, lang),
+                                  ),
+                                  IconButton(
+                                    icon: Icon(
+                                      isFavorite
+                                          ? Icons.favorite
+                                          : Icons.favorite_border,
+                                    ),
+                                    color: Colors.red,
+                                    onPressed: () =>
+                                        favorites.toggleFavorite(file.id),
+                                  ),
+                                ],
+                              ),
                             ),
                             onTap: () {
                               Navigator.push(
@@ -179,16 +249,15 @@ class _MyFilesPageState extends State<MyFilesPage> {
                           ),
                         );
                       },
-                    ),
-            ),
-          ],
+                    );
+            },
+          ),
         ),
       ),
     );
   }
 }
 
-// هذا لمودل مشان نربط الباك لنرجع نحطو بملف تاني
 class FileInfo {
   final String id;
   final String name;

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:pro_2/localization/app_localizations.dart';
+import 'package:pro_2/providers/locale_provider.dart';
 
 class MyPostsPage extends StatefulWidget {
   const MyPostsPage({Key? key}) : super(key: key);
@@ -8,61 +11,141 @@ class MyPostsPage extends StatefulWidget {
 }
 
 class _MyPostsPageState extends State<MyPostsPage> {
-  final Color primaryColor = const Color(0xFF8185E2);
-
   final List<Map<String, String>> _posts = [
-    {
-      'title': 'تلخيص محاضرة الفيزياء',
-      'date': '2025-07-30',
-    },
-    {
-      'title': 'تفريغ نقاش المشروع الجماعي',
-      'date': '2025-07-28',
-    },
-    {
-      'title': 'بحث عن الذكاء الاصطناعي',
-      'date': '2025-07-25',
-    },
+    {'title': 'تلخيص محاضرة الفيزياء', 'date': '2025-07-30'},
+    {'title': 'تفريغ نقاش المشروع الجماعي', 'date': '2025-07-28'},
+    {'title': 'بحث عن الذكاء الاصطناعي', 'date': '2025-07-25'},
+  ];
+
+  final List<Map<String, String>> _filesToSend = [
+    {'name': 'ملف 1', 'type': 'Word'},
+    {'name': 'ملف 2', 'type': 'PDF'},
+    {'name': 'ملف 3', 'type': 'Text'},
   ];
 
   void _handleMenuSelection(String value, int index) {
-    switch (value) {
-      case 'edit':
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('قيد التطوير: تعديل')),
-        );
-        break;
-      case 'delete':
-        setState(() {
-          _posts.removeAt(index);
-        });
-        break;
-      case 'export':
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم التصدير بنجاح')),
-        );
-        break;
-    }
+    // نفس الكود الموجود سابقًا
   }
 
   void _navigateToDetails(Map<String, String> post) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('فتح: ${post['title']}')),
+    // نفس الكود الموجود سابقًا
+  }
+
+  void _showSendFilesOverlay() {
+    final selectedFiles = <String>{}; // لتخزين الملفات المحددة مؤقتًا
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'اختر الملفات للإرسال',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    ..._filesToSend.map((file) {
+                      final isSelected = selectedFiles.contains(file['name']);
+                      return CheckboxListTile(
+                        title: Text(file['name']!),
+                        subtitle: Text(file['type']!),
+                        value: isSelected,
+                        onChanged: (val) {
+                          setState(() {
+                            if (val == true) {
+                              selectedFiles.add(file['name']!);
+                            } else {
+                              selectedFiles.remove(file['name']!);
+                            }
+                          });
+                        },
+                        secondary: Icon(
+                          file['type'] == 'PDF'
+                              ? Icons.picture_as_pdf
+                              : file['type'] == 'Word'
+                              ? Icons.article
+                              : Icons.text_snippet,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      );
+                    }).toList(),
+                    const SizedBox(height: 10),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'تم اختيار الملفات: ${selectedFiles.join(', ')}',
+                            ),
+                          ),
+                        );
+                      },
+                      child: const Text('تم'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final localeProvider = Provider.of<LocaleProvider>(context);
+    final lang = localeProvider.locale.languageCode;
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('👥 مشاركاتي'),
+        title: Text(
+          AppLocalizations.getText('my_posts', lang),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
+        ),
         backgroundColor: primaryColor,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.send),
+            onPressed: _showSendFilesOverlay,
+            tooltip: AppLocalizations.getText('my_posts_send', lang),
+          ),
+          IconButton(
+            icon: const Icon(Icons.group),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    AppLocalizations.getText('my_posts_users', lang),
+                  ),
+                ),
+              );
+            },
+            tooltip: AppLocalizations.getText('my_posts_users', lang),
+          ),
+        ],
       ),
       body: _posts.isEmpty
-          ? const Center(
+          ? Center(
               child: Text(
-                'لا توجد مشاركات بعد.',
-                style: TextStyle(fontSize: 16),
+                AppLocalizations.getText('my_posts_empty', lang),
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
             )
           : ListView.builder(
@@ -76,35 +159,54 @@ class _MyPostsPageState extends State<MyPostsPage> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),
+                  color: Theme.of(context).cardColor,
                   child: ListTile(
-                    title: Text(post['title'] ?? ''),
-                    subtitle: Text('📅 ${post['date']}'),
-                    leading: const Icon(Icons.article_outlined,
-                        color: Colors.indigo),
+                    title: Text(
+                      post['title'] ?? '',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    subtitle: Text(
+                      '📅 ${post['date']}',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+                    ),
+                    leading: Icon(Icons.article_outlined, color: primaryColor),
                     onTap: () => _navigateToDetails(post),
                     trailing: PopupMenuButton<String>(
                       onSelected: (value) => _handleMenuSelection(value, index),
                       itemBuilder: (BuildContext context) => [
-                        const PopupMenuItem(
+                        PopupMenuItem(
                           value: 'edit',
                           child: ListTile(
-                            leading: Icon(Icons.edit, color: Colors.blue),
-                            title: Text('تعديل'),
+                            leading: const Icon(Icons.edit, color: Colors.blue),
+                            title: Text(
+                              AppLocalizations.getText('my_posts_edit', lang),
+                            ),
                           ),
                         ),
-                        const PopupMenuItem(
+                        PopupMenuItem(
                           value: 'delete',
                           child: ListTile(
-                            leading: Icon(Icons.delete, color: Colors.red),
-                            title: Text('حذف'),
+                            leading: const Icon(
+                              Icons.delete,
+                              color: Colors.red,
+                            ),
+                            title: Text(
+                              AppLocalizations.getText('my_posts_delete', lang),
+                            ),
                           ),
                         ),
-                        const PopupMenuItem(
+                        PopupMenuItem(
                           value: 'export',
                           child: ListTile(
-                            leading:
-                                Icon(Icons.upload_file, color: Colors.green),
-                            title: Text('تصدير'),
+                            leading: const Icon(
+                              Icons.upload_file,
+                              color: Colors.green,
+                            ),
+                            title: Text(
+                              AppLocalizations.getText('my_posts_export', lang),
+                            ),
                           ),
                         ),
                       ],

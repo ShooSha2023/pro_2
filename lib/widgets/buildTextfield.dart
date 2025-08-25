@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 Widget buildTextField({
+  required BuildContext context,
   TextEditingController? controller,
   required String label,
   required String hintText,
@@ -9,33 +10,35 @@ Widget buildTextField({
   TextInputType? keyboardType,
   List<TextInputFormatter>? inputFormatters,
   String? initialValue,
-  Function(dynamic value)? onChanged,
+  void Function(String)? onChanged,
   bool? enabled,
 }) {
-  // تعيين كنترولر افتراضي إذا لم يُمرر
   controller ??= TextEditingController(text: initialValue);
 
-  const primaryColor = Color(0xFF8185E2);
+  final theme = Theme.of(context);
+  final primaryColor = theme.colorScheme.primary;
 
   return TextField(
     controller: controller,
     enabled: enabled,
     keyboardType: keyboardType,
     inputFormatters: inputFormatters,
-    style: const TextStyle(color: primaryColor),
+    style: theme.textTheme.bodyMedium?.copyWith(color: Colors.black87),
     decoration: InputDecoration(
       labelText: label,
-      labelStyle: const TextStyle(color: primaryColor),
+      labelStyle: theme.textTheme.bodyMedium?.copyWith(color: primaryColor),
       hintText: hintText,
       prefixIcon: Icon(icon, color: primaryColor),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
       filled: true,
-      fillColor: Colors.white,
+      fillColor: theme.scaffoldBackgroundColor, // نفس لون خلفية كلمة السر
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(15),
+        borderSide: BorderSide(color: primaryColor.withOpacity(0.5)),
+      ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: primaryColor),
+        borderRadius: BorderRadius.circular(15),
+        borderSide: BorderSide(color: primaryColor, width: 2),
       ),
     ),
     onChanged: onChanged,

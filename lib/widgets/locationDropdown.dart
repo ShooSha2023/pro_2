@@ -4,11 +4,15 @@ class LocationDropdown extends StatefulWidget {
   final List<String> locations;
   final void Function(String) onLocationChanged;
   final String? defaultValue;
+  final String? label;
+  final String? hint;
 
   const LocationDropdown({
     required this.locations,
     required this.onLocationChanged,
     this.defaultValue,
+    this.label,
+    this.hint,
     Key? key,
   }) : super(key: key);
 
@@ -19,8 +23,6 @@ class LocationDropdown extends StatefulWidget {
 class LocationDropdownState extends State<LocationDropdown> {
   String? selectedLocation;
 
-  static const primaryColor = Color(0xFF8185E2);
-
   @override
   void initState() {
     super.initState();
@@ -29,37 +31,46 @@ class LocationDropdownState extends State<LocationDropdown> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+    final cardColor = theme.scaffoldBackgroundColor;
+
     return DropdownButtonFormField<String>(
       value: selectedLocation,
       items: widget.locations
-          .map((location) => DropdownMenuItem(
-                value: location,
-                child: Text(
-                  location,
-                  style: const TextStyle(color: primaryColor),
-                ),
-              ))
+          .map(
+            (location) => DropdownMenuItem(
+              value: location,
+              child: Text(location, style: TextStyle(color: primaryColor)),
+            ),
+          )
           .toList(),
       decoration: InputDecoration(
-        labelText: 'Select Location',
-        labelStyle: const TextStyle(color: primaryColor),
-        hintText: 'Choose your location',
-        prefixIcon: const Icon(Icons.location_on, color: primaryColor),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        labelText: widget.label ?? 'المجال الإعلامي',
+        labelStyle: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
+        hintText: widget.hint ?? 'اختر المجال',
+        prefixIcon: Icon(Icons.location_on, color: primaryColor),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: cardColor,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide(color: primaryColor.withOpacity(0.5)),
+        ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: primaryColor),
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide(color: primaryColor, width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 16,
+          horizontal: 12,
         ),
       ),
       onChanged: (newValue) {
         setState(() {
           selectedLocation = newValue;
         });
-        widget.onLocationChanged(newValue!);
+        if (newValue != null) widget.onLocationChanged(newValue);
       },
     );
   }

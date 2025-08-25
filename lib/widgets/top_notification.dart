@@ -42,7 +42,6 @@ class TopNotification {
 
     overlay.insert(overlayEntry);
 
-    // الإغلاق التلقائي بعد 3 ثوانٍ
     Future.delayed(const Duration(seconds: 3), () {
       if (overlayEntry.mounted) {
         overlayEntry.remove();
@@ -79,7 +78,9 @@ class _SlideDownNotificationState extends State<_SlideDownNotification>
     super.initState();
 
     _controller = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 300));
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, -1),
       end: Offset.zero,
@@ -125,10 +126,7 @@ class _SlideDownNotificationState extends State<_SlideDownNotification>
                 Expanded(
                   child: Text(
                     widget.message,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                    ),
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
                   ),
                 ),
                 GestureDetector(
