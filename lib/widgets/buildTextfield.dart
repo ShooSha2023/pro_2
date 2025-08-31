@@ -12,6 +12,7 @@ Widget buildTextField({
   String? initialValue,
   void Function(String)? onChanged,
   bool? enabled,
+  bool? readOnly,
 }) {
   controller ??= TextEditingController(text: initialValue);
 

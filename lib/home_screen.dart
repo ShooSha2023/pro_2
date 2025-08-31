@@ -7,10 +7,6 @@ import 'SearchPage.dart';
 import 'MyPostsPage.dart';
 import 'SettingsPage.dart';
 
-void main() {
-  runApp(const MyApp());
-}
-
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
   @override
@@ -20,13 +16,13 @@ class MyApp extends StatelessWidget {
       theme: AppThemes.lightTheme,
       darkTheme: AppThemes.darkTheme,
       themeMode: ThemeMode.system,
-      home: const HomePage(),
+      home: const HomePage(token: null),
     );
   }
 }
 
 class HomePage extends StatefulWidget {
-  const HomePage({Key? key}) : super(key: key);
+  const HomePage({Key? key, required token}) : super(key: key);
   @override
   State<HomePage> createState() => _HomePageState();
 }

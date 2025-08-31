@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
-import 'package:http/http.dart' as http;
 
 class FileEditorPage extends StatefulWidget {
-  final String fileName;
-  final String fileUrl;
+  final String? fileName;
+  final String? fileUrl;
+  final String? initialText;
 
   const FileEditorPage({
     Key? key,
-    required this.fileName,
-    required this.fileUrl,
+    this.fileName,
+    this.fileUrl,
+    this.initialText,
   }) : super(key: key);
 
   @override
@@ -27,44 +28,36 @@ class _FileEditorPageState extends State<FileEditorPage> {
   @override
   void initState() {
     super.initState();
-    _loadFileContent();
-  }
 
-  Future<void> _loadFileContent() async {
-    try {
-      final response = await http.get(Uri.parse(widget.fileUrl));
-      if (response.statusCode == 200) {
-        final doc = quill.Document()..insert(0, response.body);
-        setState(() {
-          _controller = quill.QuillController(
-            document: doc,
-            selection: const TextSelection.collapsed(offset: 0),
-          );
-          _isLoading = false;
-        });
-      } else {
-        throw Exception('فشل تحميل الملف');
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('حدث خطأ: $e')),
+    if (widget.initialText != null) {
+      // حالة نص مبدئي أو تفريغ صوتي
+      final doc = quill.Document()..insert(0, widget.initialText!);
+      _controller = quill.QuillController(
+        document: doc,
+        selection: const TextSelection.collapsed(offset: 0),
       );
-      setState(() {
-        _controller = quill.QuillController.basic();
-        _isLoading = false;
-      });
+      _isLoading = false;
+    } else if (widget.fileUrl != null) {
+      // حالة فتح ملف موجود من URL (يمكن لاحقاً إضافة تحميل HTTP)
+      // الآن نتركها فارغة مؤقتاً
+      final doc = quill.Document()
+        ..insert(0, 'تحميل الملف من الرابط: ${widget.fileUrl}');
+      _controller = quill.QuillController(
+        document: doc,
+        selection: const TextSelection.collapsed(offset: 0),
+      );
+      _isLoading = false;
+    } else {
+      // حالة إنشاء جديد بدون نص
+      _controller = quill.QuillController.basic();
+      _isLoading = false;
     }
   }
 
-  void _saveFile() {
+  void _saveAndReturn() {
     if (_controller != null) {
       final content = _controller!.document.toPlainText();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              'تم حفظ الملف (محلياً فقط حالياً). طول النص: ${content.length} حرف'),
-        ),
-      );
+      Navigator.pop(context, content); // يرجع النص للصفحة السابقة
     }
   }
 
@@ -79,13 +72,13 @@ class _FileEditorPageState extends State<FileEditorPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.fileName),
+        title: Text(widget.fileName ?? 'محرر النصوص'),
         backgroundColor: primaryColor,
         actions: [
           IconButton(
             icon: const Icon(Icons.save),
-            onPressed: _controller == null ? null : _saveFile,
             tooltip: 'حفظ',
+            onPressed: _saveAndReturn,
           ),
         ],
       ),
@@ -104,10 +97,6 @@ class _FileEditorPageState extends State<FileEditorPage> {
                             controller: _controller!,
                             focusNode: _focusNode,
                             scrollController: _scrollController,
-                            // autoFocus: true,
-                            // readOnly: false,
-                            // expands: true,
-                            // padding: EdgeInsets.zero,
                           ),
                   ),
                 ),

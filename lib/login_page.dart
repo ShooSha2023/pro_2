@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:pro_2/localization/app_localizations.dart';
+import 'package:pro_2/models/journalist.dart';
+import 'package:pro_2/services/api.dart';
+import 'package:pro_2/widgets/locationDropdown.dart';
 import 'package:provider/provider.dart';
 import 'package:pro_2/home_screen.dart';
 import 'package:pro_2/providers/locale_provider.dart';
@@ -11,218 +14,99 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage>
-    with SingleTickerProviderStateMixin {
+class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
 
-  // Controllers for forgot password dialog
-  final _forgotEmailController = TextEditingController();
-  final _otpController = TextEditingController();
-  final _newPasswordController = TextEditingController();
-  final _confirmNewPasswordController = TextEditingController();
+  String? _selectedSpecialty;
 
   bool _obscurePassword = true;
   bool isSignup = false;
+  bool _isLoading = false;
 
-  // ====== Forgot Password Dialog ======
-  void _showForgotPasswordDialog(String lang) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Text(
-            AppLocalizations.getText('forgot_password', lang),
-            textAlign: TextAlign.center,
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: _forgotEmailController,
-                decoration: InputDecoration(
-                  labelText: AppLocalizations.getText('email', lang),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 15),
-              ElevatedButton(
-                onPressed: () {
-                  // هون بتحط كود إرسال OTP
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        lang == "ar"
-                            ? "تم إرسال رمز التحقق إلى بريدك الإلكتروني"
-                            : "OTP has been sent to your email",
-                      ),
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4A47A3),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                ),
-                child: Text(
-                  AppLocalizations.getText("send_otp", lang),
-                  style: const TextStyle(color: Colors.white),
-                ),
-              ),
-              const SizedBox(height: 15),
-              TextFormField(
-                controller: _otpController,
-                decoration: InputDecoration(
-                  labelText: "OTP Code",
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                ),
-                keyboardType: TextInputType.number,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(AppLocalizations.getText("cancel", lang)),
+  final List<Map<String, String>> _specialties = [
+    {"en": "politics", "ar": "سياسة"},
+    {"en": "sports", "ar": "رياضة"},
+    {"en": "technology", "ar": "تكنولوجيا"},
+    {"en": "health", "ar": "صحة"},
+    {"en": "other", "ar": "أخرى"},
+  ];
+
+  /// ====== SUBMIT LOGIN / SIGNUP ======
+  void _submit(String lang) async {
+    setState(() => _isLoading = true);
+
+    if (isSignup) {
+      final data = {
+        "first_name": _firstNameController.text,
+        "last_name": _lastNameController.text,
+        "email": _emailController.text,
+        "specialty": _selectedSpecialty ?? "",
+        "password": _passwordController.text,
+        "password2": _confirmPasswordController.text,
+      };
+
+      final result = await ApiService.registerAndLogin(data);
+      setState(() => _isLoading = false);
+
+      if (result['success']) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              lang == 'ar'
+                  ? 'تم إنشاء الحساب وتسجيل الدخول'
+                  : 'Account created & logged in',
             ),
-            ElevatedButton(
-              onPressed: () {
-                // التحقق من OTP (مثال: 1234)
-                if (_otpController.text == "1234") {
-                  Navigator.pop(context);
-                  _showResetPasswordDialog(lang);
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        lang == "ar"
-                            ? "رمز التحقق غير صحيح"
-                            : "Invalid OTP Code",
-                      ),
-                    ),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4A47A3),
-              ),
-              child: Text(
-                AppLocalizations.getText("confirm", lang),
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
-          ],
+          ),
         );
-      },
-    );
-  }
-
-  // ====== Reset Password Dialog ======
-  void _showResetPasswordDialog(String lang) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Text(
-            lang == "ar" ? "إعادة تعيين كلمة السر" : "Reset Password",
-            textAlign: TextAlign.center,
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: _newPasswordController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: AppLocalizations.getText('password', lang),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 15),
-              TextFormField(
-                controller: _confirmNewPasswordController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: AppLocalizations.getText('confirm_password', lang),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(AppLocalizations.getText("cancel", lang)),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (_newPasswordController.text.isEmpty ||
-                    _confirmNewPasswordController.text.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        lang == "ar"
-                            ? "الرجاء إدخال كلمة السر الجديدة"
-                            : "Please enter the new password",
-                      ),
-                    ),
-                  );
-                  return;
-                }
-                if (_newPasswordController.text !=
-                    _confirmNewPasswordController.text) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        lang == "ar"
-                            ? "كلمتا السر غير متطابقتين"
-                            : "Passwords do not match",
-                      ),
-                    ),
-                  );
-                  return;
-                }
-
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      lang == "ar"
-                          ? "تم تغيير كلمة السر بنجاح"
-                          : "Password changed successfully",
-                    ),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4A47A3),
-              ),
-              child: Text(
-                AppLocalizations.getText("confirm", lang),
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
-          ],
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => HomePage(token: result['token'])),
         );
-      },
-    );
+      } else {
+        String message = 'حدث خطأ';
+        if (result['error'] != null) {
+          message = result['error'].toString();
+        }
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+      }
+    } else {
+      final email = _emailController.text.trim();
+      final password = _passwordController.text.trim();
+
+      final result = await ApiService.login(email, password);
+      setState(() => _isLoading = false);
+
+      if (result['success']) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              lang == 'ar' ? 'تم تسجيل الدخول' : 'Login successful',
+            ),
+          ),
+        );
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => HomePage(token: result['data']["token"]),
+          ),
+        );
+      } else {
+        String message = 'حدث خطأ';
+        if (result['error']?['errors']?['non_field_errors'] != null) {
+          message = result['error']['errors']['non_field_errors'][0];
+        }
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+      }
+    }
   }
 
   @override
@@ -281,50 +165,85 @@ class _LoginPageState extends State<LoginPage>
                 ),
                 child: Form(
                   key: _formKey,
-                  child: AnimatedSize(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          isSignup
-                              ? AppLocalizations.getText(
-                                  'signup_create_account',
-                                  lang,
-                                )
-                              : AppLocalizations.getText('login_welcome', lang),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        isSignup
+                            ? AppLocalizations.getText(
+                                'signup_create_account',
+                                lang,
+                              )
+                            : AppLocalizations.getText('login_welcome', lang),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
                         ),
-                        const SizedBox(height: 20),
+                      ),
+                      const SizedBox(height: 20),
 
-                        // ===== Email =====
+                      if (isSignup) ...[
                         TextFormField(
-                          controller: _emailController,
+                          controller: _firstNameController,
                           decoration: InputDecoration(
-                            prefixIcon: const Icon(Icons.email_outlined),
-                            labelText: AppLocalizations.getText('email', lang),
+                            labelText: lang == 'ar'
+                                ? 'الاسم الأول'
+                                : 'First Name',
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 15),
+                        const SizedBox(height: 10),
+                        TextFormField(
+                          controller: _lastNameController,
+                          decoration: InputDecoration(
+                            labelText: lang == 'ar'
+                                ? 'اسم العائلة'
+                                : 'Last Name',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
 
-                        // ===== Password =====
+                        /// === Specialty Dropdown ===
+                        SpecialtyDropdown(
+                          specialties: _specialties,
+                          defaultValue: _selectedSpecialty,
+                          lang: lang,
+                          color: Colors.black45,
+                          backgroundColor: Colors.white12,
+                          onSpecialtyChanged: (val) {
+                            setState(() => _selectedSpecialty = val);
+                          },
+                        ),
+                        const SizedBox(height: 10),
+
+                        TextFormField(
+                          controller: _emailController,
+                          decoration: InputDecoration(
+                            prefixIcon: const Icon(Icons.email_outlined),
+                            labelText: lang == 'ar'
+                                ? 'البريد الإلكتروني'
+                                : 'Email',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+
                         TextFormField(
                           controller: _passwordController,
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
                             prefixIcon: const Icon(Icons.lock_outline),
-                            labelText: AppLocalizations.getText(
-                              'password',
-                              lang,
-                            ),
+                            labelText: lang == 'ar'
+                                ? 'كلمة المرور'
+                                : 'Password',
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
@@ -334,117 +253,105 @@ class _LoginPageState extends State<LoginPage>
                                     ? Icons.visibility_off
                                     : Icons.visibility,
                               ),
-                              onPressed: () {
-                                setState(() {
-                                  _obscurePassword = !_obscurePassword;
-                                });
-                              },
+                              onPressed: () => setState(
+                                () => _obscurePassword = !_obscurePassword,
+                              ),
                             ),
                           ),
                         ),
-
-                        // ===== Confirm Password (Signup Only) =====
-                        if (isSignup) ...[
-                          const SizedBox(height: 15),
-                          TextFormField(
-                            controller: _confirmPasswordController,
-                            obscureText: _obscurePassword,
-                            decoration: InputDecoration(
-                              prefixIcon: const Icon(Icons.lock_outline),
-                              labelText: AppLocalizations.getText(
-                                'confirm_password',
-                                lang,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                            ),
-                          ),
-                        ],
-
-                        const SizedBox(height: 15),
-
-                        // ===== Forgot Password (Login Only) =====
-                        if (!isSignup)
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: () {
-                                _showForgotPasswordDialog(lang);
-                              },
-                              child: Text(
-                                AppLocalizations.getText(
-                                  'forgot_password',
-                                  lang,
-                                ),
-                                style: const TextStyle(
-                                  color: Color(0xFF4A47A3),
-                                ),
-                              ),
-                            ),
-                          ),
-
                         const SizedBox(height: 10),
-
-                        // ===== Login / Signup Button =====
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color.fromARGB(
-                              255,
-                              46,
-                              39,
-                              251,
-                            ),
-                            shape: RoundedRectangleBorder(
+                        TextFormField(
+                          controller: _confirmPasswordController,
+                          obscureText: _obscurePassword,
+                          decoration: InputDecoration(
+                            labelText: lang == 'ar'
+                                ? 'تأكيد كلمة المرور'
+                                : 'Confirm Password',
+                            border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
-                          child: Text(
-                            isSignup
-                                ? AppLocalizations.getText('signup', lang)
-                                : AppLocalizations.getText('login', lang),
-                            style: const TextStyle(
-                              fontSize: 18,
-                              color: Colors.white,
+                        ),
+                        const SizedBox(height: 10),
+                      ] else ...[
+                        TextFormField(
+                          controller: _emailController,
+                          decoration: InputDecoration(
+                            prefixIcon: const Icon(Icons.email_outlined),
+                            labelText: lang == 'ar'
+                                ? 'البريد الإلكتروني'
+                                : 'Email',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30),
                             ),
                           ),
-                          onPressed: () {
-                            if (_formKey.currentState!.validate()) {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const HomePage(),
-                                ),
-                              );
-                            }
-                          },
                         ),
-
                         const SizedBox(height: 10),
-
-                        // ===== Switch between Login / Signup =====
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
-                              isSignup = !isSignup;
-                            });
-                          },
-                          child: Text(
-                            isSignup
-                                ? AppLocalizations.getText(
-                                    'already_have_account',
-                                    lang,
-                                  )
-                                : AppLocalizations.getText('signup', lang),
-                            style: const TextStyle(
-                              color: Color(0xFF4A47A3),
-                              fontWeight: FontWeight.w600,
+                        TextFormField(
+                          controller: _passwordController,
+                          obscureText: _obscurePassword,
+                          decoration: InputDecoration(
+                            prefixIcon: const Icon(Icons.lock_outline),
+                            labelText: lang == 'ar'
+                                ? 'كلمة المرور'
+                                : 'Password',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                              ),
+                              onPressed: () => setState(
+                                () => _obscurePassword = !_obscurePassword,
+                              ),
                             ),
                           ),
                         ),
                       ],
-                    ),
+
+                      const SizedBox(height: 10),
+                      ElevatedButton(
+                        onPressed: _isLoading ? null : () => _submit(lang),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2E27FB),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: _isLoading
+                            ? const CircularProgressIndicator(
+                                color: Colors.white,
+                              )
+                            : Text(
+                                isSignup
+                                    ? (lang == 'ar' ? 'إنشاء حساب' : 'Sign Up')
+                                    : (lang == 'ar' ? 'تسجيل الدخول' : 'Login'),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                ),
+                              ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextButton(
+                        onPressed: () => setState(() => isSignup = !isSignup),
+                        child: Text(
+                          isSignup
+                              ? (lang == 'ar'
+                                    ? 'لديك حساب بالفعل؟'
+                                    : 'Already have an account?')
+                              : (lang == 'ar' ? 'إنشاء حساب' : 'Sign Up'),
+                          style: const TextStyle(
+                            color: Color(0xFF4A47A3),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),

@@ -5,7 +5,6 @@ import 'package:http/http.dart' as http;
 import 'package:pro_2/FileEditorPage.dart';
 import 'package:pro_2/SearchPage.dart';
 import 'package:pro_2/favourite.dart';
-import 'package:pro_2/widgets/ActionButton.dart';
 import 'package:pro_2/providers/favorites_provider.dart';
 import 'package:pro_2/localization/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -83,43 +82,76 @@ class _MyFilesPageState extends State<MyFilesPage> {
     }
   }
 
-  void _createNewFile(String lang) {
-    Navigator.push(
+  void _openEditor({String? initialText, String? fileName}) async {
+    final editedText = await Navigator.push<String>(
       context,
       MaterialPageRoute(
-        builder: (context) => FileEditorPage(
-          fileName: AppLocalizations.getText('my_files_new_file', lang),
-          fileUrl: '',
+        builder: (_) => FileEditorPage(
+          fileName: fileName ?? 'ملف جديد',
+          initialText: initialText ?? '',
         ),
       ),
+    );
+
+    if (editedText != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تم حفظ التعديلات')));
+    }
+  }
+
+  void _createNewFile(String lang) {
+    _openEditor(
+      initialText: '',
+      fileName: AppLocalizations.getText('my_files_new_file', lang),
     );
   }
 
   void _showExportMenu(FileInfo file, String lang) {
+    final theme = Theme.of(context);
     showModalBottomSheet(
       context: context,
+      backgroundColor: theme.cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) {
         return Wrap(
           children: [
             ListTile(
-              leading: const Icon(Icons.article),
-              title: const Text('Word'),
+              leading: Icon(Icons.article, color: theme.colorScheme.primary),
+              title: Text(
+                'Word',
+                style: TextStyle(color: theme.textTheme.bodyMedium?.color),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 _downloadFile(file, lang, 'docx');
               },
             ),
             ListTile(
-              leading: const Icon(Icons.text_snippet),
-              title: const Text('Text'),
+              leading: Icon(
+                Icons.text_snippet,
+                color: theme.colorScheme.primary,
+              ),
+              title: Text(
+                'Text',
+                style: TextStyle(color: theme.textTheme.bodyMedium?.color),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 _downloadFile(file, lang, 'txt');
               },
             ),
             ListTile(
-              leading: const Icon(Icons.picture_as_pdf),
-              title: const Text('PDF'),
+              leading: Icon(
+                Icons.picture_as_pdf,
+                color: theme.colorScheme.primary,
+              ),
+              title: Text(
+                'PDF',
+                style: TextStyle(color: theme.textTheme.bodyMedium?.color),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 _downloadFile(file, lang, 'pdf');
@@ -137,122 +169,110 @@ class _MyFilesPageState extends State<MyFilesPage> {
     final localeProvider = Provider.of<LocaleProvider>(context);
     final lang = localeProvider.locale.languageCode;
 
-    return ChangeNotifierProvider(
-      create: (_) => FavoritesProvider(),
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(AppLocalizations.getText('my_files', lang)),
-          backgroundColor: primaryColor,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.search),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const SearchPage()),
-                );
-              },
-              tooltip: AppLocalizations.getText('my_files_search', lang),
-            ),
-            IconButton(
-              icon: const Icon(Icons.favorite),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => FavoritesPage(allFiles: _files),
-                  ),
-                );
-              },
-              tooltip: AppLocalizations.getText('favorites', lang),
-            ),
-            IconButton(
-              icon: const Icon(Icons.note_add),
-              onPressed: () => _createNewFile(lang),
-              tooltip: AppLocalizations.getText('my_files_create', lang),
-            ),
-          ],
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Consumer<FavoritesProvider>(
-            builder: (context, favorites, _) {
-              return _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _files.isEmpty
-                  ? Center(
-                      child: Text(
-                        AppLocalizations.getText('my_files_empty', lang),
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    )
-                  : ListView.builder(
-                      itemCount: _files.length,
-                      itemBuilder: (context, index) {
-                        final file = _files[index];
-                        final isFavorite = favorites.isFavorite(file.id);
+    final favorites = Provider.of<FavoritesProvider>(context);
 
-                        return Card(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          elevation: 4,
-                          margin: const EdgeInsets.symmetric(vertical: 8),
-                          color: Theme.of(context).cardColor,
-                          child: ListTile(
-                            title: Text(
-                              file.name,
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Text(
-                              '${AppLocalizations.getText('my_files_date', lang)}: ${file.date.toLocal().toString().split(" ")[0]}',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(color: Colors.grey),
-                            ),
-                            trailing: SizedBox(
-                              width: 100,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.download),
-                                    color: primaryColor,
-                                    onPressed: () =>
-                                        _showExportMenu(file, lang),
-                                  ),
-                                  IconButton(
-                                    icon: Icon(
-                                      isFavorite
-                                          ? Icons.favorite
-                                          : Icons.favorite_border,
-                                    ),
-                                    color: Colors.red,
-                                    onPressed: () =>
-                                        favorites.toggleFavorite(file.id),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => FileEditorPage(
-                                    fileName: file.name,
-                                    fileUrl: file.url,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        );
-                      },
-                    );
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(AppLocalizations.getText('my_files', lang)),
+        backgroundColor: primaryColor,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SearchPage()),
+              );
             },
           ),
-        ),
+          IconButton(
+            icon: const Icon(Icons.favorite),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => FavoritesPage(allFiles: _files),
+                ),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.note_add),
+            onPressed: () => _createNewFile(lang),
+          ),
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _files.isEmpty
+            ? Center(
+                child: Text(AppLocalizations.getText('my_files_empty', lang)),
+              )
+            : ListView.builder(
+                itemCount: _files.length,
+                itemBuilder: (context, index) {
+                  final file = _files[index];
+                  final isFavorite = favorites.isFavorite(file.id);
+
+                  return Card(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    elevation: 4,
+                    margin: const EdgeInsets.symmetric(vertical: 8),
+                    color: Theme.of(context).cardColor,
+                    child: ListTile(
+                      title: Text(
+                        file.name,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      subtitle: Text(
+                        'تاريخ: ${file.date.toLocal().toString().split(" ")[0]}',
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.download),
+                            color: primaryColor,
+                            onPressed: () => _showExportMenu(file, lang),
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              isFavorite
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                            ),
+                            color: Colors.red,
+                            onPressed: () => favorites.toggleFavorite(file.id),
+                          ),
+                        ],
+                      ),
+                      onTap: () async {
+                        try {
+                          final response = await http.get(Uri.parse(file.url));
+                          String fileContent = '';
+                          if (response.statusCode == 200) {
+                            fileContent = response.body;
+                          }
+                          _openEditor(
+                            initialText: fileContent,
+                            fileName: file.name,
+                          );
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('خطأ عند تحميل الملف: $e')),
+                          );
+                        }
+                      },
+                    ),
+                  );
+                },
+              ),
       ),
     );
   }

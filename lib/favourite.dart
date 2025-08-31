@@ -2,45 +2,30 @@ import 'package:flutter/material.dart';
 import 'package:pro_2/MyFilesPage.dart';
 import 'package:provider/provider.dart';
 import 'package:pro_2/providers/favorites_provider.dart';
-import 'package:pro_2/providers/locale_provider.dart';
-import 'package:pro_2/localization/app_localizations.dart';
-import 'package:pro_2/FileEditorPage.dart';
-import 'package:pro_2/widgets/ActionButton.dart';
 
 class FavoritesPage extends StatelessWidget {
-  final List<FileInfo> allFiles; // جميع الملفات من MyFilesPage
+  final List<FileInfo> allFiles;
 
   const FavoritesPage({Key? key, required this.allFiles}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = Theme.of(context).colorScheme.primary;
-    final localeProvider = Provider.of<LocaleProvider>(context);
-    final lang = localeProvider.locale.languageCode;
+    final favorites = Provider.of<FavoritesProvider>(context);
+    final favoriteFiles = allFiles
+        .where((file) => favorites.isFavorite(file.id))
+        .toList();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(AppLocalizations.getText('favorites', lang)),
-        backgroundColor: primaryColor,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Consumer<FavoritesProvider>(
-          builder: (context, favorites, _) {
-            final favoriteFiles = allFiles
-                .where((file) => favorites.isFavorite(file.id))
-                .toList();
-
-            if (favoriteFiles.isEmpty) {
-              return Center(
-                child: Text(
-                  AppLocalizations.getText('favorites_empty', lang),
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              );
-            }
-
-            return ListView.builder(
+      appBar: AppBar(title: const Text('المفضلة')),
+      body: favoriteFiles.isEmpty
+          ? const Center(
+              child: Text(
+                'لا توجد ملفات مفضلة',
+                style: TextStyle(fontSize: 16),
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
               itemCount: favoriteFiles.length,
               itemBuilder: (context, index) {
                 final file = favoriteFiles[index];
@@ -59,7 +44,7 @@ class FavoritesPage extends StatelessWidget {
                       ),
                     ),
                     subtitle: Text(
-                      '${AppLocalizations.getText('my_files_date', lang)}: ${file.date.toLocal().toString().split(" ")[0]}',
+                      'تاريخ: ${file.date.toLocal().toString().split(" ")[0]}',
                       style: Theme.of(
                         context,
                       ).textTheme.bodySmall?.copyWith(color: Colors.grey),
@@ -70,23 +55,12 @@ class FavoritesPage extends StatelessWidget {
                       onPressed: () => favorites.toggleFavorite(file.id),
                     ),
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => FileEditorPage(
-                            fileName: file.name,
-                            fileUrl: file.url,
-                          ),
-                        ),
-                      );
+                      // هنا يمكنك إضافة فتح الملف أو تحريره مثل MyFilesPage
                     },
                   ),
                 );
               },
-            );
-          },
-        ),
-      ),
+            ),
     );
   }
 }

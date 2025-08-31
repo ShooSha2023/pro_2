@@ -66,11 +66,11 @@ class AppLocalizations {
       'profile_password': 'Password',
       'profile_media_role': 'Media Role',
       'profile_save_success': 'Profile saved successfully',
-      'profile_choose_role': 'Choose your media role',
-      'profile_role_reporter': 'Reporter',
-      'profile_role_editor': 'Editor',
-      'profile_role_presenter': 'Presenter',
-      'profile_role_commentator': 'Commentator',
+      // 'profile_choose_role': 'Choose your media role',
+      // 'profile_role_reporter': 'Reporter',
+      // 'profile_role_editor': 'Editor',
+      // 'profile_role_presenter': 'Presenter',
+      // 'profile_role_commentator': 'Commentator',
 
       // MyPostsPage
       'my_posts': 'My Posts',
@@ -162,11 +162,11 @@ class AppLocalizations {
       'profile_password': 'كلمة المرور',
       'profile_media_role': 'المجال الإعلامي',
       'profile_save_success': 'تم حفظ بيانات الملف الشخصي',
-      'profile_choose_role': 'اختر المجال الإعلامي',
-      'profile_role_reporter': 'مراسل',
-      'profile_role_editor': 'محرر',
-      'profile_role_presenter': 'مقدم برامج',
-      'profile_role_commentator': 'معلق صوتي',
+      // 'profile_choose_role': 'اختر المجال الإعلامي',
+      // 'profile_role_reporter': 'مراسل',
+      // 'profile_role_editor': 'محرر',
+      // 'profile_role_presenter': 'مقدم برامج',
+      // 'profile_role_commentator': 'معلق صوتي',
 
       // MyPostsPage
       'my_posts': 'مشاركاتي',
