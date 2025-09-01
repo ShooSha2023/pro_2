@@ -236,8 +236,8 @@ class _MyPostsPageState extends State<MyPostsPage> {
 
   // مثال بيانات الملفات المرسلة
   final List<Map<String, String>> sentFiles = [
-    {'title': 'تلخيص محاضرة الفيزياء', 'date': '2025-07-30'},
-    {'title': 'تفريغ نقاش المشروع الجماعي', 'date': '2025-07-28'},
+    {'title': 'تلخيص مقابلة مع الانسة لمياء', 'date': '2025-07-30'},
+    {'title': 'تفريغ برنامج صباح الخير', 'date': '2025-07-28'},
   ];
 
   // مثال بيانات الملفات المستلمة
@@ -298,7 +298,7 @@ class _MyPostsPageState extends State<MyPostsPage> {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    AppLocalizations.getText('my_posts_sent', lang),
+                    AppLocalizations.getText('الملفات المرسلة', lang),
                     style: TextStyle(
                       color: isSentView ? Colors.white : Colors.black,
                     ),
@@ -318,7 +318,7 @@ class _MyPostsPageState extends State<MyPostsPage> {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    AppLocalizations.getText('my_posts_received', lang),
+                    AppLocalizations.getText('الملفات المستلمة', lang),
                     style: TextStyle(
                       color: !isSentView ? Colors.white : Colors.black,
                     ),

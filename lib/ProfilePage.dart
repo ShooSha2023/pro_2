@@ -1,15 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:provider/provider.dart';
-import 'package:pro_2/providers/AuthProvider.dart';
 import 'package:pro_2/services/api.dart';
+import 'package:pro_2/services/token_manager.dart';
 import 'package:pro_2/widgets/buildTextfield.dart';
 import 'package:pro_2/widgets/ActionButton.dart';
 import 'package:pro_2/widgets/top_notification.dart';
 import 'package:pro_2/widgets/locationDropdown.dart';
 import 'package:pro_2/localization/app_localizations.dart';
-import 'package:pro_2/providers/locale_provider.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -20,40 +18,80 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   File? _profileImage;
+  String? _profileImageUrl; // 🔹 رابط الصورة من السيرفر
   String? _firstName;
   String? _lastName;
   String? _email;
-  String? _password;
   String? _mediaRole;
   bool _isLoading = false;
-  bool _isPasswordVisible = false;
+  String? _token;
 
   final specialties = [
-    {"en": "Politics", "ar": "سياسة"},
-    {"en": "Economy", "ar": "اقتصاد"},
-    {"en": "Sports", "ar": "رياضة"},
-    {"en": "Culture", "ar": "ثقافة"},
-    {"en": "Technology", "ar": "تكنولوجيا"},
+    {"en": "politics", "ar": "سياسة"},
+    {"en": "economy", "ar": "اقتصاد"},
+    {"en": "sports", "ar": "رياضة"},
+    {"en": "culture", "ar": "ثقافة"},
+    {"en": "technology", "ar": "تكنولوجيا"},
   ];
 
   @override
   void initState() {
     super.initState();
-
-    // جلب بيانات المستخدم عند فتح الصفحة
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final user = authProvider.user;
-
-      if (user != null) {
-        setState(() {
-          _firstName = user.firstName;
-          _lastName = user.lastName;
-          _email = user.email;
-          _mediaRole = user.specialty;
-        });
-      }
+      _loadTokenAndProfile();
     });
+  }
+
+  Future<void> _loadTokenAndProfile() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    final token = await TokenManager.getToken();
+    print("🔑 Loaded token in ProfilePage: $token");
+
+    if (token == null || token.isEmpty) {
+      TopNotification.show(
+        context,
+        "User not logged in",
+        type: NotificationType.error,
+      );
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
+
+    _token = token;
+
+    final result = await ApiService.getProfile();
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (result['success']) {
+      final data = result['data'];
+      print("✅ Profile data loaded: $data");
+
+      setState(() {
+        _firstName = data['first_name'];
+        _lastName = data['last_name'];
+        _email = data['email'];
+        _mediaRole = data['specialty'];
+        _profileImageUrl = data['profile_picture'];
+      });
+
+      print("🎯 MediaRole default: $_mediaRole");
+      print("🖼️ Profile image URL: $_profileImageUrl");
+    } else {
+      print("❌ Profile load failed: ${result['error']}");
+      TopNotification.show(
+        context,
+        "Failed to load profile: ${result['error']}",
+        type: NotificationType.error,
+      );
+    }
   }
 
   Future<void> _pickImage() async {
@@ -63,13 +101,12 @@ class _ProfilePageState extends State<ProfilePage> {
       setState(() {
         _profileImage = File(pickedFile.path);
       });
+      print("🖼️ Image picked: ${_profileImage!.path}");
     }
   }
 
   Future<void> _saveProfile() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-    if (!authProvider.isLoggedIn || authProvider.accessToken == null) {
+    if (_token == null || _token!.isEmpty) {
       TopNotification.show(
         context,
         "User not logged in",
@@ -78,15 +115,16 @@ class _ProfilePageState extends State<ProfilePage> {
       return;
     }
 
+    print("💾 Saving profile with token: $_token");
+
     setState(() {
       _isLoading = true;
     });
 
     final result = await ApiService.updateProfile(
-      token: authProvider.accessToken!,
-      firstName: _firstName ?? '',
-      lastName: _lastName ?? '',
-      specialization: _mediaRole ?? '',
+      firstName: _firstName,
+      lastName: _lastName,
+      specialization: _mediaRole,
       image: _profileImage,
     );
 
@@ -95,27 +133,18 @@ class _ProfilePageState extends State<ProfilePage> {
     });
 
     if (result["success"]) {
-      // تحديث نسخة المستخدم في الـ Provider
-      final updatedUser = authProvider.user?.copyWith(
-        firstName: _firstName,
-        lastName: _lastName,
-        specialty: _mediaRole,
-        avatarUrl: result["data"]["avatar_url"],
-      );
-
-      if (updatedUser != null) {
-        authProvider.updateUser(updatedUser);
-      }
-
+      print("✅ Profile updated: ${result["data"]}");
       TopNotification.show(
         context,
-        "Profile updated successfully",
+        "تم تحديث البيانات بنجاح",
         type: NotificationType.success,
       );
+      await _loadTokenAndProfile();
     } else {
+      print("❌ Failed to update profile: ${result["error"]}");
       TopNotification.show(
         context,
-        "Failed to update profile: ${result["error"]}",
+        "فشل التحديث: ${result["error"]}",
         type: NotificationType.error,
       );
     }
@@ -124,16 +153,12 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).colorScheme.primary;
-    final localeProvider = Provider.of<LocaleProvider>(context);
-    final lang = localeProvider.locale.languageCode;
-    final authProvider = Provider.of<AuthProvider>(context);
-    final user = authProvider.user;
+    final lang = 'en';
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
-          AppLocalizations.getText('profile', lang),
+          AppLocalizations.getText('الملف الشخصي', lang),
           style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
@@ -146,7 +171,6 @@ class _ProfilePageState extends State<ProfilePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // صورة البروفايل
                   Stack(
                     alignment: Alignment.bottomRight,
                     children: [
@@ -157,10 +181,12 @@ class _ProfilePageState extends State<ProfilePage> {
                           radius: 85,
                           backgroundImage: _profileImage != null
                               ? FileImage(_profileImage!)
-                              : (user?.avatarUrl != null
-                                        ? NetworkImage(user!.avatarUrl!)
-                                        : const AssetImage('assets/logo.png'))
-                                    as ImageProvider,
+                              : (_profileImageUrl != null
+                                    ? NetworkImage(
+                                        "http://192.168.1.102:8000${_profileImageUrl!}",
+                                      )
+                                    : const AssetImage('assets/logo.png')
+                                          as ImageProvider),
                         ),
                       ),
                       IconButton(
@@ -174,8 +200,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     ],
                   ),
                   const SizedBox(height: 40),
-
-                  // الاسم الأول
                   buildTextField(
                     label: AppLocalizations.getText('profile_first_name', lang),
                     hintText: AppLocalizations.getText(
@@ -188,8 +212,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     context: context,
                   ),
                   const SizedBox(height: 30),
-
-                  // الاسم الأخير
                   buildTextField(
                     label: AppLocalizations.getText('profile_last_name', lang),
                     hintText: AppLocalizations.getText(
@@ -202,8 +224,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     context: context,
                   ),
                   const SizedBox(height: 30),
-
-                  // البريد الإلكتروني (غير قابل للتعديل)
                   buildTextField(
                     label: AppLocalizations.getText('profile_email', lang),
                     hintText: AppLocalizations.getText('profile_email', lang),
@@ -214,44 +234,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     readOnly: true,
                   ),
                   const SizedBox(height: 30),
-
-                  // كلمة المرور (اختياري تغييرها)
-                  TextFormField(
-                    initialValue: _password ?? '',
-                    obscureText: !_isPasswordVisible,
-                    onChanged: (value) => _password = value,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                    decoration: InputDecoration(
-                      labelText: AppLocalizations.getText(
-                        'profile_password',
-                        lang,
-                      ),
-                      hintText: AppLocalizations.getText(
-                        'profile_password',
-                        lang,
-                      ),
-                      prefixIcon: Icon(Icons.lock, color: primaryColor),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _isPasswordVisible
-                              ? Icons.visibility
-                              : Icons.visibility_off,
-                          color: primaryColor,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _isPasswordVisible = !_isPasswordVisible;
-                          });
-                        },
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-
-                  // التخصص
                   SpecialtyDropdown(
                     specialties: specialties,
                     lang: lang,
@@ -265,8 +247,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     },
                   ),
                   const SizedBox(height: 40),
-
-                  // زر الحفظ
                   ActionButton(
                     color: primaryColor,
                     icon: Icons.save,

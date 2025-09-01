@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:pro_2/localization/app_localizations.dart';
-import 'package:pro_2/models/journalist.dart';
 import 'package:pro_2/services/api.dart';
-import 'package:pro_2/widgets/locationDropdown.dart';
-import 'package:provider/provider.dart';
+import 'package:pro_2/services/token_manager.dart';
 import 'package:pro_2/home_screen.dart';
-import 'package:pro_2/providers/locale_provider.dart';
+import 'package:pro_2/widgets/locationDropdown.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -23,10 +21,13 @@ class _LoginPageState extends State<LoginPage> {
   final _lastNameController = TextEditingController();
 
   String? _selectedSpecialty;
-
+  String? _mediaRole; // قيمة الاختصاص بالإنكليزي
   bool _obscurePassword = true;
   bool isSignup = false;
   bool _isLoading = false;
+
+  final String lang = 'en';
+  final Color primaryColor = const Color(0xFF2E27FB);
 
   final List<Map<String, String>> _specialties = [
     {"en": "politics", "ar": "سياسة"},
@@ -36,83 +37,95 @@ class _LoginPageState extends State<LoginPage> {
     {"en": "other", "ar": "أخرى"},
   ];
 
-  /// ====== SUBMIT LOGIN / SIGNUP ======
-  void _submit(String lang) async {
+  Future<void> _submit() async {
     setState(() => _isLoading = true);
 
     if (isSignup) {
-      final data = {
-        "first_name": _firstNameController.text,
-        "last_name": _lastNameController.text,
-        "email": _emailController.text,
-        "specialty": _selectedSpecialty ?? "",
-        "password": _passwordController.text,
-        "password2": _confirmPasswordController.text,
-      };
+      final registerResult = await ApiService.registerUser(
+        first_name: _firstNameController.text,
+        last_name: _lastNameController.text,
+        email: _emailController.text,
+        specialty: _mediaRole ?? '',
+        password: _passwordController.text,
+        password2: _confirmPasswordController.text,
+      );
 
-      final result = await ApiService.registerAndLogin(data);
-      setState(() => _isLoading = false);
+      if (registerResult['success']) {
+        final loginResult = await ApiService.login(
+          _emailController.text,
+          _passwordController.text,
+        );
 
-      if (result['success']) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              lang == 'ar'
-                  ? 'تم إنشاء الحساب وتسجيل الدخول'
-                  : 'Account created & logged in',
-            ),
-          ),
-        );
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => HomePage(token: result['token'])),
-        );
-      } else {
-        String message = 'حدث خطأ';
-        if (result['error'] != null) {
-          message = result['error'].toString();
+        if (loginResult['success'] && loginResult['data'] != null) {
+          final token = await TokenManager.getToken();
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => HomePage(token: token ?? '')),
+          );
+        } else {
+          print("Login after register failed: ${loginResult['error']}");
         }
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(message)));
+      } else {
+        print("Register failed: ${registerResult['error']}");
       }
     } else {
-      final email = _emailController.text.trim();
-      final password = _passwordController.text.trim();
+      final loginResult = await ApiService.login(
+        _emailController.text,
+        _passwordController.text,
+      );
 
-      final result = await ApiService.login(email, password);
-      setState(() => _isLoading = false);
-
-      if (result['success']) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              lang == 'ar' ? 'تم تسجيل الدخول' : 'Login successful',
-            ),
-          ),
-        );
+      if (loginResult['success'] && loginResult['data'] != null) {
+        final token = await TokenManager.getToken();
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (_) => HomePage(token: result['data']["token"]),
-          ),
+          MaterialPageRoute(builder: (_) => HomePage(token: token ?? '')),
         );
       } else {
-        String message = 'حدث خطأ';
-        if (result['error']?['errors']?['non_field_errors'] != null) {
-          message = result['error']['errors']['non_field_errors'][0];
-        }
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(message)));
+        print("Login failed: ${loginResult['error']}");
       }
     }
+
+    setState(() => _isLoading = false);
+  }
+
+  void _showForgotPasswordDialog() {
+    final _forgotEmailController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Forgot Password'),
+        content: TextFormField(
+          controller: _forgotEmailController,
+          decoration: const InputDecoration(
+            labelText: 'Enter your email',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final email = _forgotEmailController.text;
+              if (email.isNotEmpty) {
+                final result = await ApiService.forgotPassword(email: email);
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(result['message'] ?? 'Done')),
+                );
+              }
+            },
+            child: const Text('Submit'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final localeProvider = Provider.of<LocaleProvider>(context);
-    final lang = localeProvider.locale.languageCode;
     final size = MediaQuery.of(context).size;
 
     return Scaffold(
@@ -155,7 +168,7 @@ class _LoginPageState extends State<LoginPage> {
                 decoration: BoxDecoration(
                   color: Colors.white54,
                   borderRadius: BorderRadius.circular(40),
-                  boxShadow: [
+                  boxShadow: const [
                     BoxShadow(
                       color: Colors.black26,
                       blurRadius: 10,
@@ -169,12 +182,7 @@ class _LoginPageState extends State<LoginPage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        isSignup
-                            ? AppLocalizations.getText(
-                                'signup_create_account',
-                                lang,
-                              )
-                            : AppLocalizations.getText('login_welcome', lang),
+                        isSignup ? 'Create an account' : 'Welcome back',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
@@ -182,14 +190,11 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       const SizedBox(height: 20),
-
                       if (isSignup) ...[
                         TextFormField(
                           controller: _firstNameController,
                           decoration: InputDecoration(
-                            labelText: lang == 'ar'
-                                ? 'الاسم الأول'
-                                : 'First Name',
+                            labelText: 'First Name',
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
@@ -199,63 +204,43 @@ class _LoginPageState extends State<LoginPage> {
                         TextFormField(
                           controller: _lastNameController,
                           decoration: InputDecoration(
-                            labelText: lang == 'ar'
-                                ? 'اسم العائلة'
-                                : 'Last Name',
+                            labelText: 'Last Name',
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
                           ),
                         ),
                         const SizedBox(height: 10),
-
-                        /// === Specialty Dropdown ===
                         SpecialtyDropdown(
                           specialties: _specialties,
-                          defaultValue: _selectedSpecialty,
                           lang: lang,
-                          color: Colors.black45,
-                          backgroundColor: Colors.white12,
-                          onSpecialtyChanged: (val) {
-                            setState(() => _selectedSpecialty = val);
+                          defaultValue: _mediaRole,
+                          label: 'Specialty',
+                          color: primaryColor,
+                          onSpecialtyChanged: (value) {
+                            setState(() {
+                              _mediaRole = value; // يخزن code بالإنكليزي
+                            });
                           },
                         ),
                         const SizedBox(height: 10),
-
                         TextFormField(
                           controller: _emailController,
                           decoration: InputDecoration(
-                            prefixIcon: const Icon(Icons.email_outlined),
-                            labelText: lang == 'ar'
-                                ? 'البريد الإلكتروني'
-                                : 'Email',
+                            labelText: 'Email',
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
                           ),
                         ),
                         const SizedBox(height: 10),
-
                         TextFormField(
                           controller: _passwordController,
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
-                            prefixIcon: const Icon(Icons.lock_outline),
-                            labelText: lang == 'ar'
-                                ? 'كلمة المرور'
-                                : 'Password',
+                            labelText: 'Password',
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(30),
-                            ),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility_off
-                                    : Icons.visibility,
-                              ),
-                              onPressed: () => setState(
-                                () => _obscurePassword = !_obscurePassword,
-                              ),
                             ),
                           ),
                         ),
@@ -264,9 +249,7 @@ class _LoginPageState extends State<LoginPage> {
                           controller: _confirmPasswordController,
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
-                            labelText: lang == 'ar'
-                                ? 'تأكيد كلمة المرور'
-                                : 'Confirm Password',
+                            labelText: 'Confirm Password',
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
@@ -277,10 +260,7 @@ class _LoginPageState extends State<LoginPage> {
                         TextFormField(
                           controller: _emailController,
                           decoration: InputDecoration(
-                            prefixIcon: const Icon(Icons.email_outlined),
-                            labelText: lang == 'ar'
-                                ? 'البريد الإلكتروني'
-                                : 'Email',
+                            labelText: 'Email',
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
@@ -291,32 +271,18 @@ class _LoginPageState extends State<LoginPage> {
                           controller: _passwordController,
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
-                            prefixIcon: const Icon(Icons.lock_outline),
-                            labelText: lang == 'ar'
-                                ? 'كلمة المرور'
-                                : 'Password',
+                            labelText: 'Password',
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(30),
-                            ),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility_off
-                                    : Icons.visibility,
-                              ),
-                              onPressed: () => setState(
-                                () => _obscurePassword = !_obscurePassword,
-                              ),
                             ),
                           ),
                         ),
                       ],
-
                       const SizedBox(height: 10),
                       ElevatedButton(
-                        onPressed: _isLoading ? null : () => _submit(lang),
+                        onPressed: _isLoading ? null : _submit,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2E27FB),
+                          backgroundColor: primaryColor,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(30),
                           ),
@@ -327,9 +293,7 @@ class _LoginPageState extends State<LoginPage> {
                                 color: Colors.white,
                               )
                             : Text(
-                                isSignup
-                                    ? (lang == 'ar' ? 'إنشاء حساب' : 'Sign Up')
-                                    : (lang == 'ar' ? 'تسجيل الدخول' : 'Login'),
+                                isSignup ? 'Sign Up' : 'Login',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
@@ -341,16 +305,20 @@ class _LoginPageState extends State<LoginPage> {
                         onPressed: () => setState(() => isSignup = !isSignup),
                         child: Text(
                           isSignup
-                              ? (lang == 'ar'
-                                    ? 'لديك حساب بالفعل؟'
-                                    : 'Already have an account?')
-                              : (lang == 'ar' ? 'إنشاء حساب' : 'Sign Up'),
-                          style: const TextStyle(
-                            color: Color(0xFF4A47A3),
-                            fontWeight: FontWeight.w600,
-                          ),
+                              ? 'Already have an account?'
+                              : 'Create account',
                         ),
                       ),
+                      if (!isSignup)
+                        TextButton(
+                          onPressed: _showForgotPasswordDialog,
+                          child: const Text(
+                            'Forgot Password?',
+                            style: TextStyle(
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),

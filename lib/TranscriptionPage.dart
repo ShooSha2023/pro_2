@@ -1,14 +1,12 @@
 import 'dart:io';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:ffmpeg_kit_flutter_new_min_gpl/return_code.dart';
 import 'package:flutter/material.dart';
 import 'package:pro_2/localization/app_localizations.dart';
-import 'package:pro_2/video_player.dart';
+import 'package:pro_2/services/api.dart';
 import 'package:pro_2/widgets/ActionButton.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as path;
-import 'package:ffmpeg_kit_flutter_new_min_gpl/ffmpeg_kit.dart';
 import 'package:pro_2/widgets/top_notification.dart';
 import 'package:pro_2/providers/locale_provider.dart';
 
@@ -60,19 +58,6 @@ class _TranscriptionPageState extends State<TranscriptionPage> {
       setState(() {
         _audioFile = file;
         _transcribedText = '';
-        _isProcessing = true;
-      });
-
-      Future.delayed(const Duration(seconds: 1), () {
-        final lang = Provider.of<LocaleProvider>(
-          context,
-          listen: false,
-        ).locale.languageCode;
-        setState(() {
-          _isProcessing = false;
-          _transcribedText =
-              '✅ ${AppLocalizations.getText('transcription_done', lang)}';
-        });
       });
     }
   }
@@ -81,33 +66,12 @@ class _TranscriptionPageState extends State<TranscriptionPage> {
     final result = await FilePicker.platform.pickFiles(type: FileType.video);
     if (result != null && result.files.single.path != null) {
       final videoFile = File(result.files.single.path!);
-
-      // تشغيل الفيديو مباشرة بدون خيارات
-      final audioFile = await Navigator.push<File?>(
-        context,
-        MaterialPageRoute(
-          builder: (_) => VideoPlayerScreen(videoFile: videoFile),
-        ),
-      );
-
-      if (audioFile != null) {
-        setState(() {
-          _audioFile = audioFile;
-          final lang = Provider.of<LocaleProvider>(
-            context,
-            listen: false,
-          ).locale.languageCode;
-          _transcribedText =
-              '✅ ${AppLocalizations.getText('transcription_done', lang)}';
-        });
-      }
+      // هنا ممكن تضيف تحويل الفيديو لصوت لو أحببت
     }
   }
 
   void _showAudioBottomSheet(File file) async {
     await _audioPlayer.setSource(DeviceFileSource(file.path));
-    final duration = await _audioPlayer.getDuration();
-    if (duration != null) _audioDuration = duration;
 
     showModalBottomSheet(
       context: context,
@@ -127,12 +91,6 @@ class _TranscriptionPageState extends State<TranscriptionPage> {
               final seconds = twoDigits(duration.inSeconds.remainder(60));
               return '$minutes:$seconds';
             }
-
-            _audioPlayer.onPositionChanged.listen((position) {
-              setState(() {
-                _currentPosition = position;
-              });
-            });
 
             _audioPlayer.onPlayerComplete.listen((event) {
               setState(() {
@@ -196,6 +154,40 @@ class _TranscriptionPageState extends State<TranscriptionPage> {
         );
       },
     );
+  }
+
+  Future<void> _transcribeAudio() async {
+    if (_audioFile == null) return;
+
+    final lang = Provider.of<LocaleProvider>(
+      context,
+      listen: false,
+    ).locale.languageCode;
+
+    setState(() => _isProcessing = true);
+
+    final result = await ApiService.uploadAudioFile(_audioFile!);
+
+    setState(() => _isProcessing = false);
+
+    if (result['success'] == true) {
+      setState(() {
+        _transcribedText =
+            result['message'] ??
+            '✅ ${AppLocalizations.getText('transcription_done', lang)}';
+      });
+      TopNotification.show(
+        context,
+        AppLocalizations.getText('transcription_done', lang),
+      );
+    } else {
+      TopNotification.show(
+        context,
+        result['message'] ??
+            '❌ ${AppLocalizations.getText('transcription_error', lang)}',
+        type: NotificationType.error,
+      );
+    }
   }
 
   void _saveTranscription() {
@@ -288,23 +280,7 @@ class _TranscriptionPageState extends State<TranscriptionPage> {
                         Icons.text_snippet,
                         color: theme.colorScheme.secondary,
                       ),
-                      onPressed: () async {
-                        final lang = Provider.of<LocaleProvider>(
-                          context,
-                          listen: false,
-                        ).locale.languageCode;
-
-                        setState(() => _isProcessing = true);
-
-                        // ضع هنا كود التحويل الفعلي
-                        await Future.delayed(const Duration(seconds: 2));
-
-                        setState(() {
-                          _isProcessing = false;
-                          _transcribedText =
-                              '✅ ${AppLocalizations.getText('transcription_done', lang)}';
-                        });
-                      },
+                      onPressed: _transcribeAudio,
                     ),
                   ],
                 ),

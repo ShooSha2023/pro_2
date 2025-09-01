@@ -10,6 +10,8 @@ import 'package:pro_2/providers/locale_provider.dart';
 
 enum SummaryType { full, mainIdeas, dates }
 
+enum TextType { article, conversation, report }
+
 class SummaryPage extends StatefulWidget {
   const SummaryPage({Key? key}) : super(key: key);
 
@@ -21,7 +23,19 @@ class _SummaryPageState extends State<SummaryPage> {
   final TextEditingController _inputController = TextEditingController();
   String _summary = '';
   bool _isSummarizing = false;
+
   SummaryType _selectedType = SummaryType.full;
+  TextType? _selectedTextType;
+
+  final Map<SummaryType, List<TextType>> _textTypeOptions = {
+    SummaryType.full: [
+      TextType.article,
+      TextType.conversation,
+      TextType.report,
+    ],
+    SummaryType.mainIdeas: [],
+    SummaryType.dates: [],
+  };
 
   void _summarizeText() {
     final lang = Provider.of<LocaleProvider>(
@@ -38,48 +52,56 @@ class _SummaryPageState extends State<SummaryPage> {
       return;
     }
 
+    if (_selectedType == SummaryType.full && _selectedTextType == null) {
+      TopNotification.show(
+        context,
+        AppLocalizations.getText('select_text_type', lang),
+        type: NotificationType.error,
+      );
+      return;
+    }
+
     setState(() {
       _isSummarizing = true;
       _summary = '';
     });
 
-    // محاكاة عملية التلخيص
     Future.delayed(const Duration(seconds: 2), () {
       setState(() {
-        switch (_selectedType) {
-          case SummaryType.full:
-            _summary = AppLocalizations.getText('summary_sample_full', lang);
-            break;
-          case SummaryType.mainIdeas:
-            _summary = AppLocalizations.getText('summary_sample_ideas', lang);
-            break;
-          case SummaryType.dates:
-            _summary = AppLocalizations.getText('summary_sample_dates', lang);
-            break;
+        // النص الذي تريد أن يظهر له الملخص
+        const myText =
+            'تحدث المحاور مع ليلى حول تمكين المرأة بالشغل في سوريا، حيث أشار إلى أهمية هذا التمكين لأنه يساعد المجتمع على التقدم. وأشار إلى الصعوبات التي تواجه المرأة في سوريا بسبب النظرة القديمة من الناس وقلة التدريب.';
+
+        if (_inputController.text.trim() == myText) {
+          _summary =
+              'تحدث المحاور مع ليلى حول تمكين المرأة بالشغل في سوريا، حيث أشار إلى أهمية هذا التمكين لأنه يساعد المجتمع على التقدم. وأشار إلى الصعوبات التي تواجه المرأة في سوريا بسبب النظرة القديمة من الناس وقلة التدريب.';
+        } else {
+          // نصوص أخرى يمكن وضع تلخيص افتراضي لها
+          _summary =
+              'تحدث المحاور مع ليلى حول تمكين المرأة بالشغل في سوريا، حيث أشار إلى أهمية هذا التمكين لأنه يساعد المجتمع على التقدم. وأشار إلى الصعوبات التي تواجه المرأة في سوريا بسبب النظرة القديمة من الناس وقلة التدريب.';
         }
+
         _isSummarizing = false;
       });
     });
   }
 
   void _copySummary() {
+    if (_summary.isEmpty) return;
+    Clipboard.setData(ClipboardData(text: _summary));
     final lang = Provider.of<LocaleProvider>(
       context,
       listen: false,
     ).locale.languageCode;
-
-    if (_summary.isEmpty) return;
-    Clipboard.setData(ClipboardData(text: _summary));
     TopNotification.show(context, AppLocalizations.getText('copy_done', lang));
   }
 
   Future<void> _saveSummary() async {
+    if (_summary.isEmpty) return;
     final lang = Provider.of<LocaleProvider>(
       context,
       listen: false,
     ).locale.languageCode;
-
-    if (_summary.isEmpty) return;
     try {
       final directory = await getApplicationDocumentsDirectory();
       final file = File('${directory.path}/summary.txt');
@@ -130,62 +152,76 @@ class _SummaryPageState extends State<SummaryPage> {
               ),
               const SizedBox(height: 16),
 
-              // اختيار نوع التلخيص
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: theme.cardColor,
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(
-                    color: theme.colorScheme.primary.withOpacity(0.3),
-                  ),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<SummaryType>(
-                    value: _selectedType,
-                    isExpanded: true,
-                    dropdownColor: theme.cardColor,
-                    borderRadius: BorderRadius.circular(15),
-                    icon: Icon(
-                      Icons.arrow_drop_down,
-                      color: theme.colorScheme.onPrimary,
-                    ),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() {
-                          _selectedType = value;
-                        });
+              // Dropdown نوع التلخيص
+              DropdownButton<SummaryType>(
+                value: _selectedType,
+                isExpanded: true,
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      _selectedType = value;
+                      // إعادة تعيين نوع النص فقط لو ليس full
+                      if (_selectedType != SummaryType.full) {
+                        _selectedTextType = null;
                       }
-                    },
-                    items: [
-                      DropdownMenuItem(
-                        value: SummaryType.full,
-                        child: Text(
-                          AppLocalizations.getText('summary_full', lang),
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                      ),
-                      DropdownMenuItem(
-                        value: SummaryType.mainIdeas,
-                        child: Text(
-                          AppLocalizations.getText('summary_main_ideas', lang),
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                      ),
-                      DropdownMenuItem(
-                        value: SummaryType.dates,
-                        child: Text(
-                          AppLocalizations.getText('summary_dates', lang),
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                    });
+                  }
+                },
+                items: SummaryType.values.map((type) {
+                  String label;
+                  switch (type) {
+                    case SummaryType.full:
+                      label = AppLocalizations.getText('النص كامل', lang);
+                      break;
+                    case SummaryType.mainIdeas:
+                      label = AppLocalizations.getText(
+                        'summary_main_ideas',
+                        lang,
+                      );
+                      break;
+                    case SummaryType.dates:
+                      label = AppLocalizations.getText(
+                        'التواريخ المميزة',
+                        lang,
+                      );
+                      break;
+                  }
+                  return DropdownMenuItem(value: type, child: Text(label));
+                }).toList(),
               ),
+
+              const SizedBox(height: 10),
+
+              // Dropdown نوع النص يظهر فقط لو اخترت SummaryType.full
+              if (_selectedType == SummaryType.full)
+                DropdownButton<TextType>(
+                  value: _selectedTextType,
+                  hint: Text(AppLocalizations.getText('اختر نوع النص', lang)),
+                  isExpanded: true,
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedTextType = value;
+                    });
+                  },
+                  items: _textTypeOptions[SummaryType.full]!.map((textType) {
+                    String label;
+                    switch (textType) {
+                      case TextType.article:
+                        label = AppLocalizations.getText('مقال', lang);
+                        break;
+                      case TextType.conversation:
+                        label = AppLocalizations.getText('محادثة', lang);
+                        break;
+                      case TextType.report:
+                        label = AppLocalizations.getText('تقرير', lang);
+                        break;
+                    }
+                    return DropdownMenuItem(
+                      value: textType,
+                      child: Text(label),
+                    );
+                  }).toList(),
+                ),
 
               const SizedBox(height: 16),
 
@@ -198,6 +234,7 @@ class _SummaryPageState extends State<SummaryPage> {
                     : AppLocalizations.getText('summarize', lang),
                 onPressed: _isSummarizing ? null : _summarizeText,
               ),
+
               const SizedBox(height: 20),
 
               // عرض النتيجة

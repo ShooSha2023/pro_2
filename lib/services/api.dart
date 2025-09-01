@@ -1,199 +1,291 @@
+// api_service.dart
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
-import '../models/user_profile.dart';
+import 'package:pro_2/services/token_manager.dart';
 
 class ApiService {
-  static const String baseUrl = "http://10.65.11.58:8000/api/Journalist";
-  static String? _token; // ✅ نخزن التوكن داخلياً
+  static const String baseUrl = "http://192.168.1.102:8000/api/Journalist";
+  static const String baseUrl1 = "http://192.168.1.102:8000/api";
 
-  /// ================= Get current token =================
-  static String? get token => _token;
-
-  /// ================= Helper to safely decode JSON =================
-  static dynamic _safeJsonDecode(String body) {
-    try {
-      return jsonDecode(body);
-    } catch (e) {
-      return {"message": "Unexpected response from server", "raw": body};
-    }
-  }
-
-  /// ================= Register Journalist =================
-  static Future<Map<String, dynamic>> registerUser(User user) async {
-    final url = Uri.parse("$baseUrl/register/");
-    try {
-      final response = await http.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(user.toJson()),
-      );
-
-      final decoded = _safeJsonDecode(response.body);
-
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        return {"success": true, "data": decoded};
-      } else {
-        return {"success": false, "error": decoded};
-      }
-    } catch (e) {
-      return {"success": false, "error": "Request failed: $e"};
-    }
-  }
-
-  /// ================= Register then Auto Login =================
-  static Future<Map<String, dynamic>> registerAndLogin(
-    Map<String, dynamic> data,
-  ) async {
-    final registerUrl = Uri.parse("$baseUrl/register/");
-    try {
-      final response = await http.post(
-        registerUrl,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(data),
-      );
-
-      final decoded = _safeJsonDecode(response.body);
-
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        // ✅ بعد التسجيل، نعمل Login تلقائي
-        return await login(data["email"], data["password"]);
-      } else {
-        return {"success": false, "error": decoded};
-      }
-    } catch (e) {
-      return {"success": false, "error": "Request failed: $e"};
-    }
-  }
-
-  /// ================= Login =================
+  /// تسجيل الدخول
+  /// تسجيل الدخول
   static Future<Map<String, dynamic>> login(
     String email,
     String password,
   ) async {
     final url = Uri.parse("$baseUrl/login/");
     try {
+      print("Sending login request to: $url");
+      print("Body: {email: $email, password: $password}");
+
       final response = await http.post(
         url,
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"email": email, "password": password}),
       );
 
-      final decoded = _safeJsonDecode(response.body);
+      print("Login response status: ${response.statusCode}");
+      print("Login response body: ${response.body}");
 
-      if (response.statusCode == 200 && decoded["status"] == "success") {
-        final data = decoded["data"];
-        return {
-          "success": true,
-          "token": data["access"], // هنا التوكن الصحيح
-          "user": data["user"], // بيانات المستخدم
-        };
+      final decoded = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && decoded['status'] == 'success') {
+        final token = decoded['data']['access'];
+        await TokenManager.saveToken(token);
+        await TokenManager.saveUserData(decoded['data']);
+
+        final savedToken = await TokenManager.getToken();
+        print("✅ Saved token: $savedToken");
+
+        return {"success": true, "data": decoded['data']};
       } else {
         return {"success": false, "error": decoded};
       }
     } catch (e) {
-      return {"success": false, "error": "Request failed: $e"};
+      print("Login exception: $e");
+      return {"success": false, "error": e.toString()};
     }
   }
 
-  /// ================= Reset password =================
-  static Future<Map<String, dynamic>> resetPassword(
-    Map<String, dynamic> data,
-  ) async {
-    final url = Uri.parse("$baseUrl/reset-password/");
+  /// جلب بيانات البروفايل
+  static Future<Map<String, dynamic>> getProfile() async {
     try {
-      if (_token == null) {
-        return {"success": false, "error": "No token found"};
+      final token = await TokenManager.getToken();
+      if (token == null || token.isEmpty) {
+        return {"success": false, "error": "Token not found"};
       }
 
-      final response = await http.post(
+      final url = Uri.parse("$baseUrl/profile/");
+      final response = await http.get(
         url,
         headers: {
+          "Authorization": "Bearer $token",
           "Content-Type": "application/json",
-          "Authorization": "Bearer $_token",
         },
-        body: jsonEncode(data),
       );
 
-      final decoded = _safeJsonDecode(response.body);
+      print("📡 GET ${url.toString()}");
+      print("🔑 Token: $token");
+      print("📥 Response (${response.statusCode}): ${response.body}");
 
       if (response.statusCode == 200) {
-        return {"success": true, "data": decoded};
+        final jsonBody = jsonDecode(response.body);
+        return {"success": true, "data": jsonBody["data"]};
       } else {
-        return {"success": false, "error": decoded};
+        return {
+          "success": false,
+          "error": "Status ${response.statusCode}: ${response.body}",
+        };
       }
     } catch (e) {
-      return {"success": false, "error": "Request failed: $e"};
+      print("❌ Error in getProfile: $e");
+      return {"success": false, "error": e.toString()};
     }
   }
 
-  /// ================= Forgot password (لا يحتاج توكن) =================
-  static Future<Map<String, dynamic>> forgotPassword(String email) async {
-    final url = Uri.parse("$baseUrl/forgot-password/");
+  /// تحديث البروفايل مع الصورة
+  /// تحديث البروفايل
+  static Future<Map<String, dynamic>> updateProfile({
+    required String? firstName,
+    required String? lastName,
+    required String? specialization,
+    File? image,
+  }) async {
+    try {
+      final token = await TokenManager.getToken();
+      if (token == null || token.isEmpty) {
+        return {"success": false, "error": "Token not found"};
+      }
+
+      final url = Uri.parse("$baseUrl/profile/update/");
+      print("📡 PUT ${url.toString()}");
+      print("🔑 Token: $token");
+
+      // 🔹 Multipart request (بحال في صورة)
+      var request = http.MultipartRequest("PUT", url);
+      request.headers["Authorization"] = "Bearer $token";
+
+      if (firstName != null) request.fields["first_name"] = firstName;
+      if (lastName != null) request.fields["last_name"] = lastName;
+      if (specialization != null) request.fields["specialty"] = specialization;
+
+      if (image != null) {
+        final imgStream = http.ByteStream(image.openRead());
+        final imgLength = await image.length();
+        final multipartFile = http.MultipartFile(
+          "profile_picture",
+          imgStream,
+          imgLength,
+          filename: image.path.split("/").last,
+        );
+        request.files.add(multipartFile);
+        print("🖼️ Attached image: ${image.path}");
+      }
+
+      print("📤 Sending fields: ${request.fields}");
+
+      final response = await request.send();
+      final responseBody = await response.stream.bytesToString();
+
+      print("📥 Response (${response.statusCode}): $responseBody");
+
+      if (response.statusCode == 200) {
+        final jsonBody = jsonDecode(responseBody);
+        return {"success": true, "data": jsonBody["data"]};
+      } else {
+        return {
+          "success": false,
+          "error": "Status ${response.statusCode}: $responseBody",
+        };
+      }
+    } catch (e) {
+      print("❌ Error in updateProfile: $e");
+      return {"success": false, "error": e.toString()};
+    }
+  }
+  // داخل ApiService
+
+  static Future<Map<String, dynamic>> registerUser({
+    required String first_name,
+    required String last_name,
+    required String email,
+    required String specialty,
+    required String password,
+    required String password2,
+  }) async {
+    final url = Uri.parse('$baseUrl/register/');
     try {
       final response = await http.post(
         url,
         headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "first_name": first_name,
+          "last_name": last_name,
+          "email": email,
+          "specialty": specialty,
+          "password": password,
+          "password2": password2,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {"success": true, "data": data};
+      } else {
+        return {"success": false, "error": data};
+      }
+    } catch (e) {
+      return {"success": false, "error": e.toString()};
+    }
+  }
+
+  /// حذف الحساب
+  static Future<Map<String, dynamic>> deleteAccount(String password) async {
+    try {
+      final token = await TokenManager.getToken();
+      if (token == null || token.isEmpty) {
+        return {"success": false, "error": "User not logged in"};
+      }
+
+      final url = Uri.parse('${baseUrl}/delete-account/');
+      final response = await http.delete(
+        url,
+        headers: {
+          "Authorization": "Bearer $token",
+          "Content-Type": "application/json",
+        },
+        body: jsonEncode({"password": password}),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        // نجاح الحذف
+        return {"success": true};
+      } else {
+        final data = jsonDecode(response.body);
+        return {
+          "success": false,
+          "error": data['message'] ?? "Failed to delete account",
+        };
+      }
+    } catch (e) {
+      return {"success": false, "error": e.toString()};
+    }
+  }
+
+  static Future<Map<String, dynamic>> uploadAudioFile(File audioFile) async {
+    try {
+      final token = await TokenManager.getToken();
+      if (token == null || token.isEmpty) {
+        return {"success": false, "message": "User not logged in"};
+      }
+
+      final uri = Uri.parse('$baseUrl1/Interviews/create/');
+      final request = http.MultipartRequest('POST', uri);
+      request.headers['Authorization'] = 'Bearer $token';
+      request.files.add(
+        await http.MultipartFile.fromPath('audio_file', audioFile.path),
+      );
+
+      final response = await request.send();
+      final respStr = await response.stream.bytesToString();
+      print("🔹 Transcription API result: $respStr");
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {"success": true, "message": respStr};
+      } else {
+        return {"success": false, "message": respStr};
+      }
+    } catch (e) {
+      return {"success": false, "message": e.toString()};
+    }
+  }
+
+  // تابع نسيان كلمة المرور بدون توكن
+  static Future<Map<String, dynamic>> forgotPassword({
+    required String email,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse("${baseUrl}/forgot-password/"),
+        headers: {"Content-Type": "application/json"},
         body: jsonEncode({"email": email}),
       );
 
-      final decoded = _safeJsonDecode(response.body);
-
       if (response.statusCode == 200) {
-        return {"success": true, "data": decoded};
+        final data = jsonDecode(response.body);
+        return {
+          "success": true,
+          "message": data['message'],
+          "data": data['data'],
+        };
       } else {
-        return {"success": false, "error": decoded};
+        return {
+          "success": false,
+          "error": "Failed to send reset email",
+          "statusCode": response.statusCode,
+        };
       }
     } catch (e) {
-      return {"success": false, "error": "Request failed: $e"};
+      return {"success": false, "error": e.toString()};
     }
   }
 
-  /// ================= Update profile =================
-  static Future<Map<String, dynamic>> updateProfile({
-    required String firstName,
-    required String lastName,
-    required String specialization,
-    File? image,
-  }) async {
-    final url = Uri.parse("$baseUrl/profile/update/");
+  static Future<Map<String, dynamic>> getRecipients(String token) async {
     try {
-      if (_token == null) {
-        return {"success": false, "error": "No token found"};
-      }
-
-      var request = http.MultipartRequest("POST", url);
-      request.headers["Authorization"] = "Bearer $_token";
-
-      request.fields["first_name"] = firstName;
-      request.fields["last_name"] = lastName;
-      request.fields["specialization"] = specialization;
-
-      if (image != null) {
-        request.files.add(
-          await http.MultipartFile.fromPath("image", image.path),
-        );
-      }
-
-      var streamedResponse = await request.send();
-      var response = await http.Response.fromStream(streamedResponse);
-
-      final decoded = _safeJsonDecode(response.body);
+      final response = await http.get(
+        Uri.parse("http://192.168.1.102:8000/api/Journalist/recipients/"),
+        headers: {"Authorization": "Bearer $token"},
+      );
 
       if (response.statusCode == 200) {
-        return {"success": true, "data": decoded};
+        final data = jsonDecode(response.body);
+        return {"success": true, "data": data['data']};
       } else {
-        return {"success": false, "error": decoded};
+        return {"success": false, "error": "Failed to fetch recipients"};
       }
     } catch (e) {
-      return {"success": false, "error": "Request failed: $e"};
+      return {"success": false, "error": e.toString()};
     }
-  }
-
-  /// ================= Logout =================
-  static Future<void> logout() async {
-    _token = null; // ✅ مسحنا التوكن من الميموري
-    // إذا عم تستخدم sharedPreferences أو secureStorage، امسحها كمان
-    // await SharedPreferences.getInstance().then((prefs) => prefs.remove("token"));
   }
 }
