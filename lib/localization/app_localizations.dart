@@ -11,6 +11,10 @@ class AppLocalizations {
       'cancel': 'Cancel',
       'save': 'Save',
       'edit': 'Edit',
+      'delete_account': 'Delete Account',
+      'delete': 'Delete',
+      'delete_confirm': 'Are you sure you want to delete your account?',
+      'enter_password': 'Please enter your password',
 
       // SplashScreen
       'splash_hi_there': 'Hi There',
@@ -30,6 +34,24 @@ class AppLocalizations {
       'signup': 'SIGNUP',
       'already_have_account': 'Already have an account? LOGIN',
 
+      // SummaryPage
+      'summary_title': '📄 Summary',
+      'input_hint': 'Enter text here to summarize...',
+      'summarize': 'Summarize',
+      'summarizing': 'Summarizing...',
+      'copy': 'Copy',
+      'copy_done': 'Summary copied',
+      'save_done': 'Summary saved',
+      'save_error': 'Error while saving',
+      'empty_input_warning': 'Please enter text first!',
+      'full_text': 'Full Text',
+      'summary_main_ideas': 'Main Ideas',
+      'dates': 'Dates',
+      'select_text_type': 'Select Text Type',
+      'article': 'Article',
+      'conversation': 'Conversation',
+      'report': 'Report',
+
       // TranscriptionPage
       'transcription': 'Transcription',
       'pick_audio_file': 'Pick Audio File',
@@ -44,20 +66,7 @@ class AppLocalizations {
       'video_to_audio_done': '🎶 Video converted to audio successfully',
       'transcription_done': 'Transcription completed successfully',
       'no_text_to_save': '⚠️ No text to save',
-      'save_done': '💾 Text saved successfully',
       'edit_mode': '✏️ Edit mode activated',
-
-      // Summary screen
-      'summary_title': '📄 Summary',
-      'input_hint': 'Enter text here to summarize...',
-      'summarize': 'Summarize',
-      'summarizing': 'Summarizing...',
-      'summary_sample': 'This is a sample summary of the entered text.',
-      'copy': 'Copy',
-      'copy_done': 'Summary copied',
-      'save_done': 'Summary saved',
-      'save_error': 'Error while saving',
-      'empty_input_warning': 'Please enter text first!',
 
       // ProfilePage
       'profile_first_name': 'First Name',
@@ -66,11 +75,9 @@ class AppLocalizations {
       'profile_password': 'Password',
       'profile_media_role': 'Media Role',
       'profile_save_success': 'Profile saved successfully',
-      // 'profile_choose_role': 'Choose your media role',
-      // 'profile_role_reporter': 'Reporter',
-      // 'profile_role_editor': 'Editor',
-      // 'profile_role_presenter': 'Presenter',
-      // 'profile_role_commentator': 'Commentator',
+      'profile': 'Profile',
+      'profile_role': 'Media Role',
+      'save': 'Save',
 
       // MyPostsPage
       'my_posts': 'My Posts',
@@ -79,7 +86,11 @@ class AppLocalizations {
       'my_posts_delete': 'Delete',
       'my_posts_export': 'Export',
       'my_posts_open': 'Open',
-
+      'my_posts_users': 'Users',
+      'my_posts_send': 'Send Files',
+      'sent_files': 'Sent Files',
+      'received_files': 'Received Files',
+      // MyFilesPage
       'my_files': 'My Files',
       'my_files_search': 'Search',
       'my_files_export': 'Export',
@@ -92,7 +103,7 @@ class AppLocalizations {
       'my_files_new_file': 'New File.txt',
       'my_files_date': 'Date',
 
-      // Language names
+      // Languages
       'arabic': 'Arabic',
       'english': 'English',
     },
@@ -107,6 +118,10 @@ class AppLocalizations {
       'cancel': 'إلغاء',
       'save': 'حفظ',
       'edit': 'تعديل',
+      'delete_account': 'حذف الحساب',
+      'delete': 'حذف',
+      'delete_confirm': 'هل أنت متأكد أنك تريد حذف حسابك؟',
+      'enter_password': 'الرجاء إدخال كلمة المرور',
 
       // SplashScreen
       'splash_hi_there': 'مرحباً بك',
@@ -126,6 +141,24 @@ class AppLocalizations {
       'signup': 'تسجيل',
       'already_have_account': 'لديك حساب؟ تسجيل الدخول',
 
+      // SummaryPage
+      'summary_title': '📄 التلخيص',
+      'input_hint': 'أدخل النص هنا ليتم تلخيصه...',
+      'summarize': 'تلخيص',
+      'summarizing': 'جاري التلخيص...',
+      'copy': 'نسخ',
+      'copy_done': 'تم نسخ التلخيص',
+      'save_done': 'تم حفظ التلخيص',
+      'save_error': 'حدث خطأ أثناء الحفظ',
+      'empty_input_warning': 'الرجاء إدخال نص أولاً!',
+      'full_text': 'النص كامل',
+      'summary_main_ideas': 'الأفكار الرئيسية',
+      'dates': 'التواريخ المميزة',
+      'select_text_type': 'اختر نوع النص',
+      'article': 'مقال',
+      'conversation': 'محادثة',
+      'report': 'تقرير',
+
       // TranscriptionPage
       'transcription': 'تفريغ الملفات',
       'pick_audio_file': 'اختيار ملف صوتي',
@@ -140,20 +173,7 @@ class AppLocalizations {
       'video_to_audio_done': '🎶 تم تحويل الفيديو إلى صوت بنجاح',
       'transcription_done': 'تم تفريغ الملف الصوتي بنجاح',
       'no_text_to_save': '⚠️ لا يوجد نص لحفظه',
-      'save_done': '💾 تم حفظ النص بنجاح',
       'edit_mode': '✏️ وضع التعديل مفعل',
-
-      // Summary screen
-      'summary_title': '📄 التلخيص',
-      'input_hint': 'أدخل النص هنا ليتم تلخيصه...',
-      'summarize': 'تلخيص',
-      'summarizing': 'جاري التلخيص...',
-      'summary_sample': 'هذا تلخيص تجريبي للنص المدخل.',
-      'copy': 'نسخ',
-      'copy_done': 'تم نسخ التلخيص',
-      'save_done': 'تم حفظ التلخيص',
-      'save_error': 'حدث خطأ أثناء الحفظ',
-      'empty_input_warning': 'الرجاء إدخال نص أولاً!',
 
       // ProfilePage
       'profile_first_name': 'الاسم الأول',
@@ -162,11 +182,9 @@ class AppLocalizations {
       'profile_password': 'كلمة المرور',
       'profile_media_role': 'المجال الإعلامي',
       'profile_save_success': 'تم حفظ بيانات الملف الشخصي',
-      // 'profile_choose_role': 'اختر المجال الإعلامي',
-      // 'profile_role_reporter': 'مراسل',
-      // 'profile_role_editor': 'محرر',
-      // 'profile_role_presenter': 'مقدم برامج',
-      // 'profile_role_commentator': 'معلق صوتي',
+      'profile': 'الملف الشخصي',
+      'profile_role': 'المجال الإعلامي',
+      'save': 'حفظ',
 
       // MyPostsPage
       'my_posts': 'مشاركاتي',
@@ -175,6 +193,9 @@ class AppLocalizations {
       'my_posts_delete': 'حذف',
       'my_posts_export': 'تصدير',
       'my_posts_open': 'فتح',
+      'my_posts_send': 'إرسال الملفات',
+      'sent_files': 'الملفات المرسلة',
+      'received_files': 'الملفات المستلمة',
 
       // MyFilesPage
       'my_files': 'ملفاتي',
@@ -189,7 +210,7 @@ class AppLocalizations {
       'my_files_new_file': 'ملف جديد.txt',
       'my_files_date': 'تاريخ',
 
-      // Language names
+      // Languages
       'arabic': 'العربية',
       'english': 'English',
     },

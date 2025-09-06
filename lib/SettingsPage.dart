@@ -121,75 +121,82 @@ class SettingsPage extends StatelessWidget {
     final theme = Theme.of(context);
     final langCode = localeProvider.locale.languageCode;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(AppLocalizations.getText('settings', langCode)),
-        backgroundColor: theme.colorScheme.primary,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          ListTile(
-            leading: Icon(Icons.person, color: theme.colorScheme.onPrimary),
-            title: Text(
-              AppLocalizations.getText('profile', langCode),
-              style: theme.textTheme.bodyMedium,
+    return Directionality(
+      textDirection: langCode == 'ar' ? TextDirection.rtl : TextDirection.ltr,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(AppLocalizations.getText('settings', langCode)),
+          backgroundColor: theme.colorScheme.primary,
+        ),
+        body: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            ListTile(
+              leading: Icon(Icons.person, color: theme.colorScheme.onPrimary),
+              title: Text(
+                AppLocalizations.getText('profile', langCode),
+                style: theme.textTheme.bodyMedium,
+              ),
+              trailing: Icon(
+                Icons.arrow_forward_ios,
+                color: theme.colorScheme.onPrimary,
+              ),
+              onTap: () => _goToProfile(context),
             ),
-            trailing: Icon(
-              Icons.arrow_forward_ios,
-              color: theme.colorScheme.onPrimary,
+            Divider(color: theme.dividerColor),
+            ListTile(
+              leading: Icon(Icons.language, color: theme.colorScheme.onPrimary),
+              title: Text(
+                AppLocalizations.getText('language', langCode),
+                style: theme.textTheme.bodyMedium,
+              ),
+              subtitle: Text(
+                langCode == 'ar'
+                    ? AppLocalizations.getText('arabic', langCode)
+                    : AppLocalizations.getText('english', langCode),
+              ),
+              trailing: Icon(
+                Icons.arrow_forward_ios,
+                color: theme.colorScheme.onPrimary,
+              ),
+              onTap: () {
+                final isArabic = langCode == 'ar';
+                localeProvider.setLocale(Locale(isArabic ? 'en' : 'ar'));
+              },
             ),
-            onTap: () => _goToProfile(context),
-          ),
-          Divider(color: theme.dividerColor),
-          ListTile(
-            leading: Icon(Icons.language, color: theme.colorScheme.onPrimary),
-            title: Text(
-              AppLocalizations.getText('language', langCode),
-              style: theme.textTheme.bodyMedium,
+            Divider(color: theme.dividerColor),
+            SwitchListTile(
+              secondary: Icon(
+                Icons.dark_mode,
+                color: theme.colorScheme.onPrimary,
+              ),
+              title: Text(
+                AppLocalizations.getText('dark_mode', langCode),
+                style: theme.textTheme.bodyMedium,
+              ),
+              value: themeProvider.isDarkMode,
+              onChanged: (value) => themeProvider.toggleTheme(),
             ),
-            subtitle: Text(langCode == 'ar' ? 'العربية' : 'English'),
-            trailing: Icon(
-              Icons.arrow_forward_ios,
-              color: theme.colorScheme.onPrimary,
+            Divider(color: theme.dividerColor),
+            ListTile(
+              leading: Icon(Icons.delete, color: Colors.red),
+              title: Text(
+                AppLocalizations.getText('delete_account', langCode),
+                style: theme.textTheme.bodyMedium?.copyWith(color: Colors.red),
+              ),
+              onTap: () => _deleteAccount(context, langCode),
             ),
-            onTap: () {
-              final isArabic = langCode == 'ar';
-              localeProvider.setLocale(Locale(isArabic ? 'en' : 'ar'));
-            },
-          ),
-          Divider(color: theme.dividerColor),
-          SwitchListTile(
-            secondary: Icon(
-              Icons.dark_mode,
-              color: theme.colorScheme.onPrimary,
+            Divider(color: theme.dividerColor),
+            ListTile(
+              leading: Icon(Icons.logout, color: Colors.red),
+              title: Text(
+                AppLocalizations.getText('logout', langCode),
+                style: theme.textTheme.bodyMedium?.copyWith(color: Colors.red),
+              ),
+              onTap: () => _logout(context, langCode),
             ),
-            title: Text(
-              AppLocalizations.getText('dark_mode', langCode),
-              style: theme.textTheme.bodyMedium,
-            ),
-            value: themeProvider.isDarkMode,
-            onChanged: (value) => themeProvider.toggleTheme(),
-          ),
-          Divider(color: theme.dividerColor),
-          ListTile(
-            leading: Icon(Icons.delete, color: Colors.red),
-            title: Text(
-              AppLocalizations.getText('حذف الحساب', langCode),
-              style: theme.textTheme.bodyMedium?.copyWith(color: Colors.red),
-            ),
-            onTap: () => _deleteAccount(context, langCode),
-          ),
-          Divider(color: theme.dividerColor),
-          ListTile(
-            leading: Icon(Icons.logout, color: Colors.red),
-            title: Text(
-              AppLocalizations.getText('تسجيل الخروج', langCode),
-              style: theme.textTheme.bodyMedium?.copyWith(color: Colors.red),
-            ),
-            onTap: () => _logout(context, langCode),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

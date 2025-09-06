@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:pro_2/localization/app_localizations.dart';
 import 'package:pro_2/services/api.dart';
 import 'package:pro_2/services/token_manager.dart';
 import 'package:pro_2/home_screen.dart';
 import 'package:pro_2/widgets/locationDropdown.dart';
+import 'package:pro_2/providers/locale_provider.dart'; // تأكد من مسار البروفايدر
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -21,12 +23,11 @@ class _LoginPageState extends State<LoginPage> {
   final _lastNameController = TextEditingController();
 
   String? _selectedSpecialty;
-  String? _mediaRole; // قيمة الاختصاص بالإنكليزي
+  String? _mediaRole;
   bool _obscurePassword = true;
   bool isSignup = false;
   bool _isLoading = false;
 
-  final String lang = 'en';
   final Color primaryColor = const Color(0xFF2E27FB);
 
   final List<Map<String, String>> _specialties = [
@@ -90,21 +91,26 @@ class _LoginPageState extends State<LoginPage> {
 
   void _showForgotPasswordDialog() {
     final _forgotEmailController = TextEditingController();
+    final locale = Provider.of<LocaleProvider>(context, listen: false).locale;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Forgot Password'),
+        title: Text(
+          AppLocalizations.getText('forgot_password', locale.languageCode),
+        ),
         content: TextFormField(
           controller: _forgotEmailController,
-          decoration: const InputDecoration(
-            labelText: 'Enter your email',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: AppLocalizations.getText('email', locale.languageCode),
+            border: const OutlineInputBorder(),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(
+              AppLocalizations.getText('cancel', locale.languageCode),
+            ),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -117,7 +123,7 @@ class _LoginPageState extends State<LoginPage> {
                 );
               }
             },
-            child: const Text('Submit'),
+            child: Text(AppLocalizations.getText('save', locale.languageCode)),
           ),
         ],
       ),
@@ -127,6 +133,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final locale = Provider.of<LocaleProvider>(context).locale;
 
     return Scaffold(
       backgroundColor: const Color(0xFF8185E2),
@@ -182,7 +189,15 @@ class _LoginPageState extends State<LoginPage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        isSignup ? 'Create an account' : 'Welcome back',
+                        isSignup
+                            ? AppLocalizations.getText(
+                                'signup_create_account',
+                                locale.languageCode,
+                              )
+                            : AppLocalizations.getText(
+                                'login_welcome',
+                                locale.languageCode,
+                              ),
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
@@ -194,7 +209,10 @@ class _LoginPageState extends State<LoginPage> {
                         TextFormField(
                           controller: _firstNameController,
                           decoration: InputDecoration(
-                            labelText: 'First Name',
+                            labelText: AppLocalizations.getText(
+                              'profile_first_name',
+                              locale.languageCode,
+                            ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
@@ -204,7 +222,10 @@ class _LoginPageState extends State<LoginPage> {
                         TextFormField(
                           controller: _lastNameController,
                           decoration: InputDecoration(
-                            labelText: 'Last Name',
+                            labelText: AppLocalizations.getText(
+                              'profile_last_name',
+                              locale.languageCode,
+                            ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
@@ -213,13 +234,16 @@ class _LoginPageState extends State<LoginPage> {
                         const SizedBox(height: 10),
                         SpecialtyDropdown(
                           specialties: _specialties,
-                          lang: lang,
+                          lang: locale.languageCode,
                           defaultValue: _mediaRole,
-                          label: 'Specialty',
+                          label: AppLocalizations.getText(
+                            'profile_media_role',
+                            locale.languageCode,
+                          ),
                           color: primaryColor,
                           onSpecialtyChanged: (value) {
                             setState(() {
-                              _mediaRole = value; // يخزن code بالإنكليزي
+                              _mediaRole = value;
                             });
                           },
                         ),
@@ -227,7 +251,10 @@ class _LoginPageState extends State<LoginPage> {
                         TextFormField(
                           controller: _emailController,
                           decoration: InputDecoration(
-                            labelText: 'Email',
+                            labelText: AppLocalizations.getText(
+                              'email',
+                              locale.languageCode,
+                            ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
@@ -238,7 +265,10 @@ class _LoginPageState extends State<LoginPage> {
                           controller: _passwordController,
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
-                            labelText: 'Password',
+                            labelText: AppLocalizations.getText(
+                              'password',
+                              locale.languageCode,
+                            ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
@@ -249,7 +279,10 @@ class _LoginPageState extends State<LoginPage> {
                           controller: _confirmPasswordController,
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
-                            labelText: 'Confirm Password',
+                            labelText: AppLocalizations.getText(
+                              'confirm_password',
+                              locale.languageCode,
+                            ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
@@ -260,7 +293,10 @@ class _LoginPageState extends State<LoginPage> {
                         TextFormField(
                           controller: _emailController,
                           decoration: InputDecoration(
-                            labelText: 'Email',
+                            labelText: AppLocalizations.getText(
+                              'email',
+                              locale.languageCode,
+                            ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
@@ -271,7 +307,10 @@ class _LoginPageState extends State<LoginPage> {
                           controller: _passwordController,
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
-                            labelText: 'Password',
+                            labelText: AppLocalizations.getText(
+                              'password',
+                              locale.languageCode,
+                            ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
@@ -293,7 +332,15 @@ class _LoginPageState extends State<LoginPage> {
                                 color: Colors.white,
                               )
                             : Text(
-                                isSignup ? 'Sign Up' : 'Login',
+                                isSignup
+                                    ? AppLocalizations.getText(
+                                        'signup',
+                                        locale.languageCode,
+                                      )
+                                    : AppLocalizations.getText(
+                                        'login',
+                                        locale.languageCode,
+                                      ),
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
@@ -305,16 +352,25 @@ class _LoginPageState extends State<LoginPage> {
                         onPressed: () => setState(() => isSignup = !isSignup),
                         child: Text(
                           isSignup
-                              ? 'Already have an account?'
-                              : 'Create account',
+                              ? AppLocalizations.getText(
+                                  'already_have_account',
+                                  locale.languageCode,
+                                )
+                              : AppLocalizations.getText(
+                                  'signup_create_account',
+                                  locale.languageCode,
+                                ),
                         ),
                       ),
                       if (!isSignup)
                         TextButton(
                           onPressed: _showForgotPasswordDialog,
-                          child: const Text(
-                            'Forgot Password?',
-                            style: TextStyle(
+                          child: Text(
+                            AppLocalizations.getText(
+                              'forgot_password',
+                              locale.languageCode,
+                            ),
+                            style: const TextStyle(
                               decoration: TextDecoration.underline,
                             ),
                           ),

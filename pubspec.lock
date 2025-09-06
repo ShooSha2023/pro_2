@@ -501,6 +501,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.1.1"
+  loading_overlay:
+    dependency: "direct main"
+    description:
+      name: loading_overlay
+      sha256: "9bfcc53463b2aba2d05abf7bb3925edf08d166460369c9662f79b12f8cdf0c9b"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.4.3"
   markdown:
     dependency: transitive
     description:

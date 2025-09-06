@@ -5,8 +5,8 @@ import 'package:http/http.dart' as http;
 import 'package:pro_2/services/token_manager.dart';
 
 class ApiService {
-  static const String baseUrl = "http://192.168.1.102:8000/api/Journalist";
-  static const String baseUrl1 = "http://192.168.1.102:8000/api";
+  static const String baseUrl = "http://10.65.1.78:8000/api/Journalist";
+  static const String baseUrl1 = "http://10.65.1.78:8000/api";
 
   /// تسجيل الدخول
   /// تسجيل الدخول
@@ -274,7 +274,7 @@ class ApiService {
   static Future<Map<String, dynamic>> getRecipients(String token) async {
     try {
       final response = await http.get(
-        Uri.parse("http://192.168.1.102:8000/api/Journalist/recipients/"),
+        Uri.parse("$baseUrl/recipients/"),
         headers: {"Authorization": "Bearer $token"},
       );
 
@@ -285,6 +285,63 @@ class ApiService {
         return {"success": false, "error": "Failed to fetch recipients"};
       }
     } catch (e) {
+      return {"success": false, "error": e.toString()};
+    }
+  }
+
+  // داخل ApiService
+
+  static Future<Map<String, dynamic>> summarizeText({
+    required String text,
+    required String summaryType,
+    String? textType,
+  }) async {
+    try {
+      final token = await TokenManager.getToken();
+      if (token == null || token.isEmpty) {
+        print("❌ No token found in summarizeText");
+        return {"success": false, "error": "Token not found"};
+      }
+
+      final body = {
+        "text": text,
+        "summary_type": summaryType,
+        if (summaryType == "كامل" && textType != null) "text_type": textType,
+      };
+
+      print("📤 POST $baseUrl1/Interviews/summarize/");
+      print("🔑 Token: $token");
+      print("📦 Body: $body");
+
+      final response = await http.post(
+        Uri.parse("$baseUrl1/Interviews/summarize/"),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: jsonEncode(body),
+      );
+
+      print("📥 Response status: ${response.statusCode}");
+      print("📥 Response body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          "success": true,
+          "message": data['message'],
+          "data": data['data'],
+        };
+      } else {
+        return {
+          "success": false,
+          "error": response.body,
+          "statusCode": response.statusCode,
+        };
+      }
+    } catch (e, st) {
+      print("❌ Exception in summarizeText: $e");
+      print("❌ Stacktrace: $st");
       return {"success": false, "error": e.toString()};
     }
   }

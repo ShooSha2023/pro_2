@@ -2,11 +2,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:pro_2/services/api.dart';
 import 'package:pro_2/widgets/ActionButton.dart';
 import 'package:pro_2/widgets/top_notification.dart';
 import 'package:pro_2/localization/app_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:pro_2/providers/locale_provider.dart';
+import 'package:loading_overlay/loading_overlay.dart';
 
 enum SummaryType { full, mainIdeas, dates }
 
@@ -37,7 +39,15 @@ class _SummaryPageState extends State<SummaryPage> {
     SummaryType.dates: [],
   };
 
-  void _summarizeText() {
+  String safeText(String key, String fallback, String lang) {
+    final val = AppLocalizations.getText(key, lang);
+    if (val == null) {
+      print("⚠️ Missing translation for key: $key (lang: $lang)");
+    }
+    return val ?? fallback;
+  }
+
+  void _summarizeText() async {
     final lang = Provider.of<LocaleProvider>(
       context,
       listen: false,
@@ -46,7 +56,7 @@ class _SummaryPageState extends State<SummaryPage> {
     if (_inputController.text.trim().isEmpty) {
       TopNotification.show(
         context,
-        AppLocalizations.getText('empty_input_warning', lang),
+        safeText('empty_input_warning', 'Input is empty', lang),
         type: NotificationType.error,
       );
       return;
@@ -55,7 +65,7 @@ class _SummaryPageState extends State<SummaryPage> {
     if (_selectedType == SummaryType.full && _selectedTextType == null) {
       TopNotification.show(
         context,
-        AppLocalizations.getText('select_text_type', lang),
+        safeText('select_text_type', 'Please select text type', lang),
         type: NotificationType.error,
       );
       return;
@@ -66,38 +76,107 @@ class _SummaryPageState extends State<SummaryPage> {
       _summary = '';
     });
 
-    Future.delayed(const Duration(seconds: 2), () {
-      setState(() {
-        // النص الذي تريد أن يظهر له الملخص
-        const myText =
-            'تحدث المحاور مع ليلى حول تمكين المرأة بالشغل في سوريا، حيث أشار إلى أهمية هذا التمكين لأنه يساعد المجتمع على التقدم. وأشار إلى الصعوبات التي تواجه المرأة في سوريا بسبب النظرة القديمة من الناس وقلة التدريب.';
+    String summaryTypeStr;
+    switch (_selectedType) {
+      case SummaryType.full:
+        summaryTypeStr = "كامل";
+        break;
+      case SummaryType.mainIdeas:
+        summaryTypeStr = "أفكار رئيسية";
+        break;
+      case SummaryType.dates:
+        summaryTypeStr = "أحداث";
+        break;
+    }
 
-        if (_inputController.text.trim() == myText) {
-          _summary =
-              'تحدث المحاور مع ليلى حول تمكين المرأة بالشغل في سوريا، حيث أشار إلى أهمية هذا التمكين لأنه يساعد المجتمع على التقدم. وأشار إلى الصعوبات التي تواجه المرأة في سوريا بسبب النظرة القديمة من الناس وقلة التدريب.';
+    String? textTypeStr;
+    if (_selectedType == SummaryType.full && _selectedTextType != null) {
+      switch (_selectedTextType!) {
+        case TextType.article:
+          textTypeStr = "مقال";
+          break;
+        case TextType.conversation:
+          textTypeStr = "محادثة";
+          break;
+        case TextType.report:
+          textTypeStr = "تقرير";
+          break;
+      }
+    }
+
+    print("📦 Sending summaryType: $summaryTypeStr, textType: $textTypeStr");
+
+    final response = await ApiService.summarizeText(
+      text: _inputController.text.trim(),
+      summaryType: summaryTypeStr,
+      textType: textTypeStr,
+    );
+
+    print("📥 Summarize response: $response");
+
+    setState(() {
+      _isSummarizing = false;
+
+      if (response["success"] == true) {
+        final data = response["data"];
+        if (data != null) {
+          if (data["bullets"] != null &&
+              data["bullets"] is List &&
+              data["bullets"].isNotEmpty) {
+            _summary = (data["bullets"] as List).map((e) => "• $e").join("\n");
+          } else if (data["facts"] != null &&
+              data["facts"] is List &&
+              data["facts"].isNotEmpty) {
+            _summary = (data["facts"] as List).map((e) => "- $e").join("\n");
+          } else if (data["summary"] != null) {
+            _summary = data["summary"];
+          } else {
+            _summary = safeText(
+              'no_summary_returned',
+              'No summary returned',
+              lang,
+            );
+          }
         } else {
-          // نصوص أخرى يمكن وضع تلخيص افتراضي لها
-          _summary =
-              'تحدث المحاور مع ليلى حول تمكين المرأة بالشغل في سوريا، حيث أشار إلى أهمية هذا التمكين لأنه يساعد المجتمع على التقدم. وأشار إلى الصعوبات التي تواجه المرأة في سوريا بسبب النظرة القديمة من الناس وقلة التدريب.';
+          _summary = safeText(
+            'no_summary_returned',
+            'No summary returned',
+            lang,
+          );
         }
-
-        _isSummarizing = false;
-      });
+      } else {
+        print("❌ Summarize error: ${response["error"]}");
+        TopNotification.show(
+          context,
+          "خطأ: ${response["error"].toString()}",
+          type: NotificationType.error,
+        );
+      }
     });
   }
 
   void _copySummary() {
-    if (_summary.isEmpty) return;
+    if (_summary.trim().isEmpty) {
+      print("⚠️ Cannot copy empty summary");
+      return;
+    }
     Clipboard.setData(ClipboardData(text: _summary));
+    print("✅ Copied summary to clipboard");
     final lang = Provider.of<LocaleProvider>(
       context,
       listen: false,
     ).locale.languageCode;
-    TopNotification.show(context, AppLocalizations.getText('copy_done', lang));
+    TopNotification.show(
+      context,
+      safeText('copy_done', 'Copied successfully', lang),
+    );
   }
 
   Future<void> _saveSummary() async {
-    if (_summary.isEmpty) return;
+    if (_summary.trim().isEmpty) {
+      print("⚠️ Cannot save empty summary");
+      return;
+    }
     final lang = Provider.of<LocaleProvider>(
       context,
       listen: false,
@@ -106,14 +185,16 @@ class _SummaryPageState extends State<SummaryPage> {
       final directory = await getApplicationDocumentsDirectory();
       final file = File('${directory.path}/summary.txt');
       await file.writeAsString(_summary);
+      print("✅ Saved summary at ${file.path}");
       TopNotification.show(
         context,
-        "${AppLocalizations.getText('save_done', lang)}: ${file.path}",
+        "${safeText('save_done', 'Saved', lang)}: ${file.path}",
       );
     } catch (e) {
+      print("❌ Save error: $e");
       TopNotification.show(
         context,
-        "${AppLocalizations.getText('save_error', lang)}: $e",
+        "${safeText('save_error', 'Save error', lang)}: $e",
         type: NotificationType.error,
       );
     }
@@ -127,122 +208,123 @@ class _SummaryPageState extends State<SummaryPage> {
 
     return Directionality(
       textDirection: lang == 'ar' ? TextDirection.rtl : TextDirection.ltr,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(AppLocalizations.getText('summary_title', lang)),
-          backgroundColor: theme.colorScheme.primary,
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              // إدخال النص
-              TextField(
-                controller: _inputController,
-                maxLines: 6,
-                decoration: InputDecoration(
-                  hintText: AppLocalizations.getText('input_hint', lang),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
+      child: LoadingOverlay(
+        isLoading: _isSummarizing,
+        color: Colors.black.withOpacity(0.5),
+        progressIndicator: const CircularProgressIndicator(),
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text(safeText('summary_title', 'Summary', lang)),
+            backgroundColor: theme.colorScheme.primary,
+          ),
+          body: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                TextField(
+                  controller: _inputController,
+                  maxLines: 6,
+                  decoration: InputDecoration(
+                    hintText: safeText(
+                      'input_hint',
+                      'Enter text to summarize',
+                      lang,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    fillColor: theme.cardColor,
+                    filled: true,
                   ),
-                  fillColor: theme.cardColor,
-                  filled: true,
+                  style: theme.textTheme.bodyMedium,
                 ),
-                style: theme.textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 16),
-
-              // Dropdown نوع التلخيص
-              DropdownButton<SummaryType>(
-                value: _selectedType,
-                isExpanded: true,
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      _selectedType = value;
-                      // إعادة تعيين نوع النص فقط لو ليس full
-                      if (_selectedType != SummaryType.full) {
-                        _selectedTextType = null;
-                      }
-                    });
-                  }
-                },
-                items: SummaryType.values.map((type) {
-                  String label;
-                  switch (type) {
-                    case SummaryType.full:
-                      label = AppLocalizations.getText('النص كامل', lang);
-                      break;
-                    case SummaryType.mainIdeas:
-                      label = AppLocalizations.getText(
-                        'summary_main_ideas',
-                        lang,
-                      );
-                      break;
-                    case SummaryType.dates:
-                      label = AppLocalizations.getText(
-                        'التواريخ المميزة',
-                        lang,
-                      );
-                      break;
-                  }
-                  return DropdownMenuItem(value: type, child: Text(label));
-                }).toList(),
-              ),
-
-              const SizedBox(height: 10),
-
-              // Dropdown نوع النص يظهر فقط لو اخترت SummaryType.full
-              if (_selectedType == SummaryType.full)
-                DropdownButton<TextType>(
-                  value: _selectedTextType,
-                  hint: Text(AppLocalizations.getText('اختر نوع النص', lang)),
+                const SizedBox(height: 16),
+                DropdownButton<SummaryType>(
+                  value: _selectedType,
                   isExpanded: true,
                   onChanged: (value) {
-                    setState(() {
-                      _selectedTextType = value;
-                    });
+                    if (value != null) {
+                      setState(() {
+                        _selectedType = value;
+                        if (_selectedType != SummaryType.full) {
+                          _selectedTextType = null;
+                        }
+                      });
+                    }
                   },
-                  items: _textTypeOptions[SummaryType.full]!.map((textType) {
+                  items: SummaryType.values.map((type) {
                     String label;
-                    switch (textType) {
-                      case TextType.article:
-                        label = AppLocalizations.getText('مقال', lang);
+                    switch (type) {
+                      case SummaryType.full:
+                        label = safeText('full_text', 'Full text', lang);
                         break;
-                      case TextType.conversation:
-                        label = AppLocalizations.getText('محادثة', lang);
+                      case SummaryType.mainIdeas:
+                        label = safeText(
+                          'summary_main_ideas',
+                          'Main ideas',
+                          lang,
+                        );
                         break;
-                      case TextType.report:
-                        label = AppLocalizations.getText('تقرير', lang);
+                      case SummaryType.dates:
+                        label = safeText('dates', 'Dates', lang);
                         break;
                     }
                     return DropdownMenuItem(
-                      value: textType,
-                      child: Text(label),
+                      value: type,
+                      child: Text(label, overflow: TextOverflow.ellipsis),
                     );
                   }).toList(),
                 ),
-
-              const SizedBox(height: 16),
-
-              // زر تلخيص
-              ActionButton(
-                color: theme.colorScheme.primary,
-                icon: Icons.auto_awesome,
-                label: _isSummarizing
-                    ? AppLocalizations.getText('summarizing', lang)
-                    : AppLocalizations.getText('summarize', lang),
-                onPressed: _isSummarizing ? null : _summarizeText,
-              ),
-
-              const SizedBox(height: 20),
-
-              // عرض النتيجة
-              if (_summary.isNotEmpty || _isSummarizing)
-                Expanded(
-                  child: Container(
+                const SizedBox(height: 10),
+                if (_selectedType == SummaryType.full)
+                  DropdownButton<TextType>(
+                    value: _selectedTextType,
+                    hint: Text(
+                      safeText('select_text_type', 'Select text type', lang),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    isExpanded: true,
+                    onChanged: (value) =>
+                        setState(() => _selectedTextType = value),
+                    items: _textTypeOptions[SummaryType.full]!.map((textType) {
+                      String label;
+                      switch (textType) {
+                        case TextType.article:
+                          label = safeText('article', 'Article', lang);
+                          break;
+                        case TextType.conversation:
+                          label = safeText(
+                            'conversation',
+                            'Conversation',
+                            lang,
+                          );
+                          break;
+                        case TextType.report:
+                          label = safeText('report', 'Report', lang);
+                          break;
+                      }
+                      return DropdownMenuItem(
+                        value: textType,
+                        child: Text(label, overflow: TextOverflow.ellipsis),
+                      );
+                    }).toList(),
+                  ),
+                const SizedBox(height: 16),
+                ActionButton(
+                  color: theme.colorScheme.primary,
+                  icon: Icons.auto_awesome,
+                  label: _isSummarizing
+                      ? safeText('summarizing', 'Summarizing', lang)
+                      : safeText('summarize', 'Summarize', lang),
+                  onPressed: _isSummarizing ? null : _summarizeText,
+                ),
+                const SizedBox(height: 20),
+                // ✅ Display summary in a scrollable container
+                if (_summary.isNotEmpty || _isSummarizing)
+                  Container(
                     padding: const EdgeInsets.all(16),
                     width: double.infinity,
+                    height: 200,
                     decoration: BoxDecoration(
                       color: theme.cardColor,
                       border: Border.all(
@@ -250,47 +332,46 @@ class _SummaryPageState extends State<SummaryPage> {
                       ),
                       borderRadius: BorderRadius.circular(15),
                     ),
-                    child: Column(
-                      children: [
-                        _isSummarizing
-                            ? const Center(child: CircularProgressIndicator())
-                            : Expanded(
-                                child: SingleChildScrollView(
-                                  child: Text(
-                                    _summary,
-                                    style: theme.textTheme.bodyMedium,
-                                  ),
-                                ),
-                              ),
-                        const SizedBox(height: 10),
-                        if (!_isSummarizing)
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              Expanded(
-                                child: ActionButton(
-                                  color: theme.colorScheme.primary,
-                                  icon: Icons.copy,
-                                  label: AppLocalizations.getText('copy', lang),
-                                  onPressed: _copySummary,
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: ActionButton(
-                                  color: theme.colorScheme.primary,
-                                  icon: Icons.save,
-                                  label: AppLocalizations.getText('save', lang),
-                                  onPressed: _saveSummary,
-                                ),
-                              ),
-                            ],
+                    child: _isSummarizing
+                        ? const Center(child: CircularProgressIndicator())
+                        : SingleChildScrollView(
+                            child: Text(
+                              _summary,
+                              style: theme.textTheme.bodyMedium,
+                            ),
                           ),
-                      ],
-                    ),
                   ),
-                ),
-            ],
+                const SizedBox(height: 10),
+                // ✅ Buttons outside Expanded
+                if (!_isSummarizing && _summary.isNotEmpty)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      Expanded(
+                        child: ActionButton(
+                          color: theme.colorScheme.primary,
+                          icon: Icons.copy,
+                          label: safeText('copy', 'Copy', lang),
+                          onPressed: _summary.trim().isEmpty
+                              ? null
+                              : _copySummary,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ActionButton(
+                          color: theme.colorScheme.primary,
+                          icon: Icons.save,
+                          label: safeText('save', 'Save', lang),
+                          onPressed: _summary.trim().isEmpty
+                              ? null
+                              : _saveSummary,
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
           ),
         ),
       ),

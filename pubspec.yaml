@@ -48,6 +48,7 @@ dependencies:
   audioplayers: ^6.5.0
   ffmpeg_kit_flutter_new_min_gpl: ^1.1.0
   shared_preferences: ^2.5.3
+  loading_overlay: ^0.4.3
   # uni_links: ^0.5.1
   
   
